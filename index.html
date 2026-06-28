@@ -591,7 +591,7 @@ function saveData(data) {
   }
 }
 
-function seedAllData() { const countries = {}; COUNTRY_DEFS.forEach(c => { countries[c.code] = createDefaultCountry(c.code); }); return { version: 3, lastModified: new Date().toISOString(), countries }; }
+function seedAllData() { const countries = {}; COUNTRY_DEFS.forEach(c => { countries[c.code] = createDefaultCountry(c.code); }); return { version: 3, lastModified: new Date().toISOString(), countries, marketHistory: seedMarketHistory() }; }
 
 async function initData() {
   let data = null;
