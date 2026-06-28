@@ -2606,16 +2606,16 @@ function onLoginSuccess() {
   showToast('已连接到云端', 'success');
 }
 
-function showLogout() {
+async function showLogout() {
   document.getElementById('auth-overlay')?.remove();
+  try { await sb.auth.signOut(); } catch(e) {}
   currentUser = null;
   if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
-  supabaseEnabled = false;
   updateSyncDot('offline');
   updateUserUI();
   updateReadonlyMode();
   handleRoute();
-  showToast('已切换到离线模式', 'success');
+  showToast('已退出登录', 'success');
 }
 
 function updateUserUI() {
