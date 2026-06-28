@@ -1,0 +1,2647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代理商数字化数据中心</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS — Warm Earth Palette on Pure White
+   ============================================================ */
+:root {
+  --font-sans: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+  --text-lg: 1.25rem; --text-xl: 1.5rem; --text-2xl: 2rem; --text-3xl: 2.5rem;
+  --weight-light: 300; --weight-regular: 400; --weight-medium: 500;
+  --weight-semibold: 600; --weight-bold: 700;
+  --leading-tight: 1.2; --leading-snug: 1.35; --leading-normal: 1.5;
+  --color-primary: #C25732; --color-primary-hover: #A84825;
+  --color-secondary: #C9A44B; --color-secondary-hover: #B08F3A;
+  --color-tertiary: #5C3320;
+  --color-bg: #FFFFFF; --color-surface: #F7F5F2;
+  --color-ink: #2C241E; --color-muted: #736B60;
+  --color-faint: #A09890; --color-border: #E5E0DB; --color-divider: #F0ECE7;
+  --color-risk-red: #D94040; --color-risk-red-bg: #FEF5F5;
+  --color-risk-yellow: #D4A040; --color-risk-yellow-bg: #FFFAF0;
+  --color-risk-green: #40A060; --color-risk-green-bg: #F5FAF5;
+  --shadow-sm: 0 1px 3px rgba(44,36,30,0.06);
+  --shadow-md: 0 4px 12px rgba(44,36,30,0.08);
+  --shadow-lg: 0 8px 24px rgba(44,36,30,0.12);
+  --space-xs: 0.5rem; --space-sm: 0.75rem; --space-md: 1rem;
+  --space-lg: 1.5rem; --space-xl: 2rem; --space-2xl: 3rem; --space-3xl: 4rem;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 9999px;
+  --border-thin: 1px solid var(--color-border);
+  --border-focus: 2px solid var(--color-primary);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms; --duration-normal: 250ms; --duration-slow: 400ms;
+  --header-height: 56px; --content-max: 1280px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+img { display: block; max-width: 100%; }
+html {
+  font-family: var(--font-sans); font-size: 100%;
+  color: var(--color-ink); background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+body { font-size: var(--text-base); line-height: var(--leading-normal); min-height: 100vh; }
+h1 { font-size: var(--text-3xl); font-weight: var(--weight-bold); line-height: var(--leading-tight); letter-spacing: -0.01em; }
+h2 { font-size: var(--text-2xl); font-weight: var(--weight-semibold); line-height: var(--leading-tight); }
+h3 { font-size: var(--text-xl); font-weight: var(--weight-semibold); line-height: var(--leading-snug); }
+h4 { font-size: var(--text-lg); font-weight: var(--weight-medium); line-height: var(--leading-snug); }
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { color: var(--color-primary-hover); }
+:focus-visible { outline: var(--border-focus); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+#app-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  height: var(--header-height);
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-xl);
+}
+.header-nav { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; }
+.header-actions { display: flex; align-items: center; gap: var(--space-md); }
+.header-nav-link { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--color-muted); text-decoration: none; padding: 6px 14px; border-radius: var(--radius-md); transition: all var(--duration-fast); }
+.header-nav-link:hover { color: var(--color-ink); background: var(--color-surface); }
+.header-nav-link.active { color: var(--color-primary); background: var(--color-primary); background: oklch(54% 0.15 20 / 0.08); }
+.header-breadcrumb { font-size: var(--text-sm); color: var(--color-muted); }
+.header-breadcrumb a { color: var(--color-muted); }
+.header-breadcrumb a:hover { color: var(--color-primary); }
+#app-main { margin-top: var(--header-height); min-height: calc(100vh - var(--header-height)); }
+
+#map-container { width: 100%; height: calc(100vh - var(--header-height)); }
+.country-marker { cursor: pointer !important; transition: transform var(--duration-fast) var(--ease-out) !important; }
+.country-marker:hover { transform: scale(1.5) !important; filter: brightness(0.85); }
+.country-tooltip { background: var(--color-bg); border: var(--border-thin); border-radius: var(--radius-md); padding: var(--space-sm) var(--space-md); box-shadow: var(--shadow-md); font-family: var(--font-sans); font-size: var(--text-sm); color: var(--color-ink); }
+.country-tooltip::before { display: none; }
+.map-country-list { position: fixed; bottom: var(--space-lg); left: 50%; transform: translateX(-50%); background: var(--color-bg); border: var(--border-thin); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: var(--space-md) var(--space-lg); display: flex; gap: var(--space-md); flex-wrap: wrap; justify-content: center; max-width: 90vw; z-index: 500; opacity: 0; pointer-events: none; }
+.map-country-list.visible { opacity: 1; pointer-events: auto; }
+.map-country-list a { font-size: var(--text-sm); color: var(--color-ink); white-space: nowrap; text-decoration: none; }
+.map-country-list a:hover { color: var(--color-primary); }
+.map-country-list-toggle { position: fixed; bottom: var(--space-lg); right: var(--space-lg); z-index: 501; background: var(--color-bg); border: var(--border-thin); border-radius: var(--radius-full); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: var(--text-lg); box-shadow: var(--shadow-sm); }
+
+.country-detail { max-width: var(--content-max); margin: 0 auto; padding: var(--space-2xl) var(--space-xl); }
+.country-header { margin-bottom: var(--space-2xl); }
+.country-header-top { display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg); }
+.back-btn { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-sm); color: var(--color-muted); cursor: pointer; background: none; border: none; font-family: inherit; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); transition: color var(--duration-fast); }
+.back-btn:hover { color: var(--color-ink); }
+.country-header-info { display: flex; align-items: center; gap: var(--space-xl); flex-wrap: wrap; }
+.country-name-en { font-size: var(--text-lg); color: var(--color-muted); font-weight: var(--weight-regular); }
+.score-display { display: flex; align-items: center; gap: var(--space-md); }
+.score-number { font-size: var(--text-3xl); font-weight: var(--weight-bold); line-height: 1; letter-spacing: -0.02em; }
+.score-number.red { color: var(--color-risk-red); }
+.score-number.yellow { color: var(--color-risk-yellow); }
+.score-number.green { color: var(--color-risk-green); }
+.phase-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.phase-badge.preparing { background: var(--color-risk-red-bg); color: var(--color-risk-red); }
+.phase-badge.in-progress { background: var(--color-risk-yellow-bg); color: var(--color-risk-yellow); }
+.phase-badge.completed { background: var(--color-risk-green-bg); color: var(--color-risk-green); }
+.phase-dot { width: 6px; height: 6px; border-radius: 50%; }
+.phase-badge.preparing .phase-dot { background: var(--color-risk-red); }
+.phase-badge.in-progress .phase-dot { background: var(--color-risk-yellow); }
+.phase-badge.completed .phase-dot { background: var(--color-risk-green); }
+
+.module-section { margin-bottom: var(--space-xl); border: var(--border-thin); border-radius: var(--radius-lg); background: var(--color-bg); overflow: hidden; opacity: 0; transform: translateY(16px); transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-out); }
+.module-section.visible { opacity: 1; transform: translateY(0); }
+.module-section-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-lg) var(--space-xl); border-bottom: var(--border-thin); background: var(--color-surface); }
+.module-section-header h3 { font-size: var(--text-base); font-weight: var(--weight-semibold); }
+.module-section-body { padding: var(--space-xl); }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md); font-family: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); cursor: pointer; border: none; transition: all var(--duration-fast); }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-secondary { background: var(--color-bg); color: var(--color-ink); border: var(--border-thin); }
+.btn-secondary:hover { background: var(--color-surface); }
+.btn-ghost { background: transparent; color: var(--color-muted); }
+.btn-ghost:hover { color: var(--color-ink); background: var(--color-surface); }
+.btn-danger { background: transparent; color: var(--color-risk-red); }
+.btn-danger:hover { background: var(--color-risk-red-bg); }
+.btn-sm { padding: 4px 10px; font-size: var(--text-xs); }
+.btn-icon { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: transparent; border: none; cursor: pointer; color: var(--color-muted); font-size: var(--text-base); }
+.btn-icon:hover { background: var(--color-surface); color: var(--color-ink); }
+
+.editable-value { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 6px; border-radius: var(--radius-sm); transition: background var(--duration-fast); min-width: 30px; }
+.editable-value:hover { background: var(--color-surface); }
+.editable-value::after { content: '✎'; font-size: 10px; color: var(--color-faint); opacity: 0; transition: opacity var(--duration-fast); }
+.editable-value:hover::after { opacity: 1; }
+.editable-input { font-family: inherit; font-size: inherit; padding: 2px 6px; border: var(--border-focus); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-ink); width: 80px; outline: none; }
+.editable-input.wide { width: 160px; }
+.editable-select { font-family: inherit; font-size: var(--text-sm); padding: 2px 6px; border: var(--border-focus); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-ink); }
+
+.progress-bar { width: 100%; height: 6px; background: var(--color-divider); border-radius: var(--radius-full); overflow: hidden; }
+.progress-bar-fill { height: 100%; border-radius: var(--radius-full); transition: width var(--duration-slow) var(--ease-out); }
+.progress-bar-fill.red { background: var(--color-risk-red); }
+.progress-bar-fill.yellow { background: var(--color-risk-yellow); }
+.progress-bar-fill.green { background: var(--color-risk-green); }
+
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: var(--weight-medium); }
+.badge-red { background: var(--color-risk-red-bg); color: var(--color-risk-red); }
+.badge-yellow { background: var(--color-risk-yellow-bg); color: var(--color-risk-yellow); }
+.badge-green { background: var(--color-risk-green-bg); color: var(--color-risk-green); }
+.badge-neutral { background: var(--color-surface); color: var(--color-muted); }
+.status-dot { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-sm); }
+.status-dot-circle { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-dot-circle.red { background: var(--color-risk-red); }
+.status-dot-circle.yellow { background: var(--color-risk-yellow); }
+.status-dot-circle.green { background: var(--color-risk-green); }
+
+.data-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.data-table th { font-weight: var(--weight-semibold); font-size: var(--text-xs); color: var(--color-muted); text-align: left; padding: var(--space-sm) var(--space-md); border-bottom: var(--border-thin); text-transform: none; }
+.data-table td { padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--color-divider); font-size: var(--text-sm); }
+.data-table tr:last-child td { border-bottom: none; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+
+/* Gantt Chart */
+.gantt-table { width: 100%; border-collapse: collapse; }
+.gantt-table th { font-weight: var(--weight-semibold); font-size: var(--text-xs); color: var(--color-muted); text-align: center; padding: var(--space-sm) var(--space-xs); border-bottom: var(--border-thin); }
+.gantt-table td { padding: var(--space-xs); border-bottom: 1px solid var(--color-divider); vertical-align: middle; }
+.gantt-project-name { font-size: var(--text-sm); font-weight: var(--weight-medium); min-width: 140px; }
+.gantt-bar-wrap { position: relative; height: 28px; background: var(--color-divider); border-radius: var(--radius-sm); overflow: hidden; cursor: pointer; }
+.gantt-bar-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: var(--radius-sm); transition: width var(--duration-normal) var(--ease-out); display: flex; align-items: center; justify-content: center; font-size: var(--text-xs); color: #fff; font-weight: var(--weight-medium); min-width: 0; }
+.gantt-bar-fill.evaluat { background: #E8A87C; }
+.gantt-bar-fill.integrat { background: #D4A040; }
+.gantt-bar-fill.test { background: #5BA0B0; }
+.gantt-bar-fill.live { background: #40A060; }
+.gantt-phase-header { font-size: var(--text-xs); color: var(--color-muted); }
+
+/* Stat Grid */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-md); }
+.stat-card { background: var(--color-surface); border-radius: var(--radius-md); padding: var(--space-lg); }
+.stat-card-label { font-size: var(--text-xs); color: var(--color-muted); margin-bottom: var(--space-xs); }
+.stat-card-label .sub { display: block; font-size: 10px; color: var(--color-faint); }
+.stat-card-value { font-size: var(--text-xl); font-weight: var(--weight-bold); line-height: var(--leading-tight); display: flex; align-items: baseline; gap: var(--space-xs); }
+.stat-card-value .frac { font-size: var(--text-sm); color: var(--color-muted); font-weight: var(--weight-regular); }
+.stat-card-change { font-size: var(--text-xs); margin-top: var(--space-xs); }
+.stat-card-change.up { color: var(--color-risk-green); }
+.stat-card-change.down { color: var(--color-risk-red); }
+
+/* Chart toggle */
+.chart-container { margin-top: var(--space-lg); }
+.chart-container canvas { max-height: 300px; }
+
+/* Todo Panel */
+.todo-popover-wrap { position: relative; display: inline-flex; }
+.todo-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--radius-full); font-family: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; background: var(--color-surface); border: var(--border-thin); color: var(--color-ink); transition: all var(--duration-fast); }
+.todo-btn:hover { background: var(--color-border); }
+.todo-count { background: var(--color-risk-red); color: #fff; border-radius: var(--radius-full); padding: 1px 7px; font-size: 10px; font-weight: var(--weight-bold); min-width: 18px; text-align: center; }
+.todo-count.zero { background: var(--color-muted); }
+.todo-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 380px; max-height: 420px; overflow-y: auto; background: var(--color-bg); border: var(--border-thin); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 100; display: none; }
+.todo-dropdown.open { display: block; }
+.todo-dropdown-header { padding: var(--space-md) var(--space-lg); border-bottom: var(--border-thin); font-weight: var(--weight-semibold); font-size: var(--text-sm); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--color-bg); z-index: 2; }
+.todo-item { padding: var(--space-sm) var(--space-lg); border-bottom: 1px solid var(--color-divider); font-size: var(--text-sm); display: flex; align-items: flex-start; gap: var(--space-sm); cursor: default; transition: background var(--duration-fast); }
+.todo-item:hover { background: var(--color-surface); }
+.todo-item-icon { flex-shrink: 0; width: 20px; text-align: center; font-size: var(--text-sm); }
+.todo-item-body { flex: 1; min-width: 0; }
+.todo-item-title { font-weight: var(--weight-medium); }
+.todo-item-meta { font-size: var(--text-xs); color: var(--color-muted); display: flex; gap: var(--space-md); margin-top: 2px; }
+.todo-item-meta span { white-space: nowrap; }
+.todo-item.overdue { border-left: 3px solid var(--color-risk-red); }
+.todo-item.overdue .todo-item-title { color: var(--color-risk-red); }
+.todo-empty { padding: var(--space-xl); text-align: center; color: var(--color-faint); font-size: var(--text-sm); }
+
+/* Config Page */
+.config-page { max-width: var(--content-max); margin: 0 auto; padding: var(--space-2xl) var(--space-xl); }
+.config-country-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-2xl); padding-bottom: var(--space-lg); border-bottom: var(--border-thin); }
+.config-country-tab { font-family: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); padding: 6px 14px; border-radius: var(--radius-full); border: var(--border-thin); background: var(--color-bg); color: var(--color-muted); cursor: pointer; transition: all var(--duration-fast); white-space: nowrap; }
+.config-country-tab:hover { color: var(--color-ink); border-color: var(--color-muted); }
+.config-country-tab.active { background: var(--color-ink); color: #fff; border-color: var(--color-ink); }
+.config-section { margin-bottom: var(--space-lg); border: var(--border-thin); border-radius: var(--radius-lg); overflow: hidden; }
+.config-section-header { padding: var(--space-md) var(--space-xl); background: var(--color-surface); font-weight: var(--weight-semibold); font-size: var(--text-sm); cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+.config-section-header:hover { background: var(--color-divider); }
+.config-section-body { padding: var(--space-xl); display: none; }
+.config-section.open .config-section-body { display: block; }
+.config-section.open .config-section-header { border-bottom: var(--border-thin); }
+.config-row { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; }
+.config-row + .config-row { border-top: 1px solid var(--color-divider); }
+.config-label { width: 180px; flex-shrink: 0; font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.config-label small { display: block; font-size: var(--text-xs); color: var(--color-muted); font-weight: var(--weight-regular); }
+.config-input { font-family: inherit; font-size: var(--text-sm); padding: 6px 10px; border: var(--border-thin); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-ink); width: 200px; outline: none; transition: border-color var(--duration-fast); }
+.config-input:focus { border-color: var(--color-primary); }
+.config-input.wide { width: 400px; }
+.config-input.small { width: 80px; }
+.config-select { font-family: inherit; font-size: var(--text-sm); padding: 6px 10px; border: var(--border-thin); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-ink); outline: none; }
+.config-check { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); }
+.config-check input { width: 16px; height: 16px; accent-color: var(--color-primary); }
+.config-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
+.config-empty { color: var(--color-faint); font-size: var(--text-sm); font-style: italic; padding: var(--space-sm) 0; }
+
+/* Market Page */
+.market-page { max-width: var(--content-max); margin: 0 auto; padding: var(--space-2xl) var(--space-xl); }
+.market-section { border: var(--border-thin); border-radius: var(--radius-lg); background: var(--color-bg); margin-bottom: var(--space-2xl); overflow: hidden; }
+.market-section-header { display: flex; justify-content: space-between; align-items: center; padding: var(--space-xl); border-bottom: var(--border-thin); background: var(--color-surface); flex-wrap: wrap; gap: var(--space-md); }
+.market-section-body { padding: var(--space-xl); }
+@media (max-width: 768px) {
+  .market-section-body > div { grid-template-columns: 1fr !important; }
+}
+
+/* Countdown */
+.countdown { font-variant-numeric: tabular-nums; font-size: var(--text-sm); }
+.countdown.overdue { color: var(--color-risk-red); font-weight: var(--weight-semibold); }
+.countdown.activated { color: var(--color-risk-green); }
+
+/* Legal sync */
+.legal-sync-bar { display: flex; align-items: flex-start; gap: var(--space-xl); flex-wrap: wrap; padding: var(--space-lg); background: var(--color-surface); border-radius: var(--radius-md); }
+.legal-sync-bar.delayed { background: var(--color-risk-red-bg); border-left: 3px solid var(--color-risk-red); }
+.legal-sync-item { display: flex; flex-direction: column; gap: 2px; min-width: 100px; }
+.legal-sync-label { font-size: var(--text-xs); color: var(--color-muted); }
+.legal-sync-value { font-size: var(--text-sm); font-weight: var(--weight-medium); }
+
+#toast-container { position: fixed; bottom: var(--space-xl); right: var(--space-xl); z-index: 2000; display: flex; flex-direction: column-reverse; gap: var(--space-sm); }
+.toast { background: var(--color-ink); color: #fff; padding: var(--space-sm) var(--space-lg); border-radius: var(--radius-md); font-size: var(--text-sm); box-shadow: var(--shadow-md); animation: toast-in var(--duration-normal) var(--ease-out); max-width: 360px; }
+.toast.success { border-left: 3px solid var(--color-risk-green); }
+.toast.error { border-left: 3px solid var(--color-risk-red); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } .module-section { opacity: 1; transform: none; } }
+/* Auth */
+.auth-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.auth-modal { background: var(--color-bg); border-radius: var(--radius-xl); padding: var(--space-2xl); width: 380px; max-width: 90vw; box-shadow: var(--shadow-lg); }
+.auth-modal h2 { font-size: var(--text-xl); margin-bottom: var(--space-xs); }
+.auth-modal p { font-size: var(--text-sm); color: var(--color-muted); margin-bottom: var(--space-xl); }
+.auth-input { width: 100%; padding: 10px 14px; border: var(--border-thin); border-radius: var(--radius-md); font-family: inherit; font-size: var(--text-base); margin-bottom: var(--space-md); outline: none; }
+.auth-input:focus { border-color: var(--color-primary); }
+.auth-btn { width: 100%; padding: 10px; border-radius: var(--radius-md); font-family: inherit; font-size: var(--text-base); font-weight: var(--weight-semibold); cursor: pointer; border: none; margin-bottom: var(--space-sm); }
+.auth-btn.primary { background: var(--color-ink); color: #fff; }
+.auth-btn.ghost { background: transparent; color: var(--color-muted); }
+.auth-error { color: var(--color-risk-red); font-size: var(--text-sm); margin-bottom: var(--space-md); display: none; }
+.header-user { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--text-xs); color: var(--color-muted); }
+.header-user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--color-surface); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: var(--weight-semibold); color: var(--color-muted); }
+.header-user-btn { font-family: inherit; font-size: var(--text-xs); color: var(--color-muted); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); }
+.header-user-btn:hover { color: var(--color-ink); background: var(--color-surface); }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.sync-dot.online { background: var(--color-risk-green); }
+.sync-dot.offline { background: var(--color-faint); }
+.sync-dot.syncing { background: var(--color-risk-yellow); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+@media (max-width: 768px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .country-header-info { flex-direction: column; align-items: flex-start; gap: var(--space-md); }
+  #app-header { padding: 0 var(--space-md); }
+  .country-detail { padding: var(--space-lg) var(--space-md); }
+  .module-section-body { padding: var(--space-md); }
+  .gantt-table { font-size: var(--text-xs); }
+  .gantt-project-name { min-width: 100px; }
+}
+</style>
+</head>
+<body>
+
+<header id="app-header">
+  <nav class="header-nav">
+    <a href="#/" class="header-nav-link" id="nav-map">Map</a>
+    <a href="#/market" class="header-nav-link" id="nav-market">整体市场</a>
+    <a href="#/config" class="header-nav-link" id="nav-config">配置</a>
+  </nav>
+  <div class="header-actions">
+    <span class="header-breadcrumb" id="breadcrumb"></span>
+    <span class="sync-dot offline" id="sync-dot" title="同步状态"></span>
+    <span class="header-user" id="header-user"></span>
+  </div>
+</header>
+
+<main id="app-main"></main>
+<div id="toast-container"></div>
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+const COUNTRY_DEFS = [
+  { code: 'CO', name: 'Colombia',             nameZh: '哥伦比亚',   lat: 4.5709,  lng: -74.2973 },
+  { code: 'EC', name: 'Ecuador',              nameZh: '厄瓜多尔',   lat: -1.8312, lng: -78.1834 },
+  { code: 'PE', name: 'Peru',                 nameZh: '秘鲁',       lat: -9.1900, lng: -75.0152 },
+  { code: 'UY', name: 'Uruguay',              nameZh: '乌拉圭',     lat: -32.5228,lng: -55.7658 },
+  { code: 'PY', name: 'Paraguay',             nameZh: '巴拉圭',     lat: -23.4425,lng: -58.4438 },
+  { code: 'BO', name: 'Bolivia',              nameZh: '玻利维亚',   lat: -16.2902,lng: -63.5887 },
+  { code: 'CR', name: 'Costa Rica',           nameZh: '哥斯达黎加', lat: 9.7489,  lng: -83.7534 },
+  { code: 'PA', name: 'Panama',               nameZh: '巴拿马',     lat: 8.5380,  lng: -80.7821 },
+  { code: 'SV', name: 'El Salvador',          nameZh: '萨尔瓦多',   lat: 13.7942, lng: -88.8965 },
+  { code: 'GT', name: 'Guatemala',            nameZh: '危地马拉',   lat: 15.7835, lng: -90.2308 },
+  { code: 'CL', name: 'Chile',                nameZh: '智利',       lat: -33.4489,lng: -70.6693 },
+  { code: 'DO', name: 'Dominican Republic',   nameZh: '多米尼加',   lat: 18.7357, lng: -70.1627 },
+  { code: 'BS', name: 'Bahamas',              nameZh: '巴哈马',     lat: 25.0343, lng: -77.3963 },
+  { code: 'JM', name: 'Jamaica',              nameZh: '牙买加',     lat: 18.1096, lng: -77.2975 }
+];
+
+const PHASES = [
+  { value: 'preparing',  label: '准备中' },
+  { value: 'in-progress',label: '正在进行' },
+  { value: 'completed',  label: '已完成' }
+];
+
+const STORAGE_KEY = 'blueprint-portfolio';
+const GANTT_PHASES = [
+  { key: 'evaluatPct', label: '评估中', labelEn: 'Evaluating' },
+  { key: 'integratPct', label: '对接中', labelEn: 'Integrating' },
+  { key: 'testPct', label: '测试中', labelEn: 'Testing' },
+  { key: 'livePct', label: '已上线', labelEn: 'Live' }
+];
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function genId() { return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
+function daysAgo(n) { return new Date(Date.now() - n * 86400000).toISOString(); }
+function daysFromNow(n) { return new Date(Date.now() + n * 86400000).toISOString(); }
+function hoursAgo(n) { return new Date(Date.now() - n * 3600000).toISOString(); }
+function hoursFromNow(n) { return new Date(Date.now() + n * 3600000).toISOString(); }
+function rand(min, max) { return Math.floor(Math.random()*(max-min+1))+min; }
+function formatDate(iso) { if (!iso) return ''; const d = new Date(iso); if (isNaN(d.getTime())) return iso; return d.toLocaleDateString('zh-CN', { year:'numeric',month:'2-digit',day:'2-digit' }) + ' ' + d.toLocaleTimeString('zh-CN', { hour:'2-digit',minute:'2-digit' }); }
+function formatPct(n) { return (n >= 0 ? '+' : '') + Number(n).toFixed(1) + '%'; }
+function formatMonth(ym) { if (!ym) return ''; const parts = ym.split('-'); return parts[1] ? parts[0]+'年'+parseInt(parts[1])+'月' : ym; }
+
+function genHistory(months, baseScore) {
+  const hist = [];
+  for (let i = months-1; i >= 0; i--) {
+    const d = new Date(); d.setMonth(d.getMonth() - i);
+    hist.push({
+      date: d.toISOString().slice(0,7),
+      score: Math.max(0, Math.min(100, baseScore + rand(-15, 15))),
+      systemIntegration: rand(30,95), workOrderCompleteness: rand(30,95),
+      tisAccountUsage: rand(30,95), tisQARecords: rand(30,95),
+      lmsUsage: rand(30,95), pendingRequirements: rand(0,8), hasRisks: Math.random() > 0.7
+    });
+  }
+  const d = new Date();
+  hist.push({ date: d.toISOString().slice(0,7), score: baseScore, systemIntegration: rand(30,95), workOrderCompleteness: rand(30,95), tisAccountUsage: rand(30,95), tisQARecords: rand(30,95), lmsUsage: rand(30,95), pendingRequirements: rand(0,5), hasRisks: Math.random() > 0.6 });
+  return hist;
+}
+
+function genWorkOrderHistory(months) {
+  const hist = [];
+  for (let i = months-1; i >= 0; i--) {
+    const d = new Date(); d.setMonth(d.getMonth() - i);
+    hist.push({ date: d.toISOString().slice(0,7), closeUnder15min: rand(70,95), abnormalClose: rand(2,15), missingSettlement: rand(1,10), maintenance24hClose: rand(60,90), totalQualified: rand(80,95) });
+  }
+  return hist;
+}
+
+function calcScore(metrics) {
+  const parts = [
+    (metrics.systemIntegration.value / 100) * 50, (metrics.workOrderCompleteness.value / 100) * 30,
+    (metrics.tisAccountUsage.value / 100) * 5, (metrics.tisQARecords.value / 100) * 5,
+    (metrics.lmsUsage.value / 100) * 5, Math.max(0, 5 - metrics.pendingRequirements.value),
+    metrics.riskItems.hasRisks ? -10 : 0
+  ];
+  const raw = parts.reduce((s, v) => s + v, 0);
+  return Math.max(0, Math.min(100, Math.round(raw)));
+}
+
+function calcScoreFromHistory(h) {
+  const parts = [
+    (h.systemIntegration/100)*50, (h.workOrderCompleteness/100)*30,
+    (h.tisAccountUsage/100)*5, (h.tisQARecords/100)*5, (h.lmsUsage/100)*5,
+    Math.max(0, 5 - (h.pendingRequirements||0)), h.hasRisks ? -10 : 0
+  ];
+  return Math.max(0, Math.min(100, Math.round(parts.reduce((s,v)=>s+v,0))));
+}
+
+function getRiskLevel(score) { if (score < 60) return 'red'; if (score <= 85) return 'yellow'; return 'green'; }
+function getRiskLabel(level) { if (level === 'red') return '风险'; if (level === 'yellow') return '改造中'; return '健康'; }
+
+function createDefaultCountry(code) {
+  const def = COUNTRY_DEFS.find(c => c.code === code);
+  const baseScore = rand(45, 90);
+  return {
+    code, name: def ? def.name : code, nameZh: def ? def.nameZh : code,
+    phase: 'preparing', lastModified: new Date().toISOString(),
+    history: genHistory(6, baseScore), workOrderHistory: genWorkOrderHistory(6),
+    metrics: {
+      systemIntegration: { value: rand(30,95), notes: '' }, workOrderCompleteness: { value: rand(30,95), notes: '' },
+      tisAccountUsage: { value: rand(30,95), notes: '' }, tisQARecords: { value: rand(30,95), notes: '' },
+      lmsUsage: { value: rand(30,95), notes: '' }, pendingRequirements: { value: rand(0,5), notes: '' },
+      riskItems: { hasRisks: Math.random() > 0.6, description: '' }
+    },
+    gantt: { projects: [
+      { id: genId(), title: 'DMS系统对接', evaluatPct: 100, integratPct: 60, testPct: 20, livePct: 0, notes: '', createdAt: daysAgo(90), updatedAt: daysAgo(3) },
+      { id: genId(), title: '保修API连接', evaluatPct: 100, integratPct: 100, testPct: 70, livePct: 0, notes: '', createdAt: daysAgo(60), updatedAt: daysAgo(1) },
+      { id: genId(), title: '配件目录同步', evaluatPct: 100, integratPct: 100, testPct: 100, livePct: 80, notes: '', createdAt: daysAgo(45), updatedAt: daysAgo(7) },
+      { id: genId(), title: '客户门户SSO', evaluatPct: 100, integratPct: 100, testPct: 100, livePct: 100, notes: '', createdAt: daysAgo(120), updatedAt: daysAgo(30) }
+    ]},
+    workOrders: {
+      weeklyCloseUnder15min: { value: rand(70,95), total: rand(100,500) },
+      abnormalCloseTime: { value: rand(2,15), total: rand(10,80) },
+      missingSettlementTime: { value: rand(1,10), total: rand(5,50) },
+      maintenance24hCloseRate: { value: rand(60,90), total: rand(50,300) },
+      typeBreakdown: [
+        { type: '保修/Warranty', count: rand(50,200), qualified: rand(40,180) },
+        { type: '保养/Maintenance', count: rand(30,150), qualified: rand(25,130) },
+        { type: '维修/Repair', count: rand(20,100), qualified: rand(15,85) },
+        { type: '其他/Other', count: rand(5,40), qualified: rand(3,35) }
+      ],
+      totalQualifiedRate: rand(80,95),
+      momChange: { weeklyCloseUnder15min: rand(-5,5), abnormalCloseTime: rand(-3,3), missingSettlementTime: rand(-3,3), maintenance24hCloseRate: rand(-5,5), totalQualifiedRate: rand(-3,3) }
+    },
+    tisUsage: { accountUsageRate: rand(40,95), monthlyQA: rand(100,400) },
+    lmsUsage: { accountActivationRate: rand(30,90) },
+    requirements: [
+      { id: genId(), title: '保修索赔API接口', titleZh: '保修索赔API接口', status: 'in-progress', statusZh: '进行中', owner: 'Zhang Wei', domesticScheduleUrl: 'https://jira.byd.com/PROJ-123', notes: '', createdAt: daysAgo(30), updatedAt: daysAgo(5) },
+      { id: genId(), title: '配件库存实时同步', titleZh: '配件库存实时同步', status: 'pending', statusZh: '待处理', owner: 'Li Ming', domesticScheduleUrl: 'https://jira.byd.com/PROJ-156', notes: '', createdAt: daysAgo(15), updatedAt: daysAgo(2) },
+      { id: genId(), title: '经销商门户培训模块', titleZh: '经销商门户培训模块', status: 'review', statusZh: '评审中', owner: 'Wang Fang', domesticScheduleUrl: '', notes: '', createdAt: daysAgo(10), updatedAt: daysAgo(1) }
+    ],
+    accountActivations: [
+      { id: genId(), accountName: `TIS-${code}-Admin`, requestedAt: hoursAgo(20), deadlineAt: hoursFromNow(28), activatedAt: null, notes: '' },
+      { id: genId(), accountName: `LMS-${code}-Trainer`, requestedAt: hoursAgo(10), deadlineAt: hoursFromNow(38), activatedAt: null, notes: '' }
+    ],
+    legalSync: { projects: [
+      { id: genId(), projectName: `${def.nameZh}法务合规项目`, status: 'normal', statusZh: '正常', lastSyncDate: daysAgo(3), nextSyncDate: daysFromNow(4), isDelayed: Math.random() > 0.8, contactPerson: 'Li Ming', contactEmail: 'liming@byd.com', notes: '' }
+    ]}
+  };
+}
+
+// ============================================================
+// ============================================================
+// SUPABASE 配置指南
+// ============================================================
+// 1. 去 https://supabase.com 注册免费账号
+// 2. 创建新项目，记下 Project URL 和 anon/public key
+// 3. 在 Supabase SQL Editor 运行以下 SQL：
+//
+//   CREATE TABLE app_data (
+//     id INTEGER PRIMARY KEY DEFAULT 1,
+//     data JSONB NOT NULL,
+//     updated_at TIMESTAMPTZ DEFAULT NOW()
+//   );
+//   ALTER TABLE app_data REPLICA IDENTITY FULL;
+//   ALTER TABLE app_data ENABLE ROW LEVEL SECURITY;
+//   CREATE POLICY "Allow all" ON app_data FOR ALL USING (true);
+//
+// 4. 启用 Auth → Email provider (关闭确认邮件方便测试)
+// 5. 把下面两行填上你的 Supabase 信息
+// 6. 推送到 GitHub → 开启 GitHub Pages → 在线访问
+//
+const SUPABASE_URL = 'https://grrtgehehmiauybqkcjk.supabase.co';  // 例如 'https://xxxxx.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_ttfwXtupiX62WJrJGCWI8Q_1NY2sQL8';  // 例如 'eyJhbGciOi...' (anon public key)
+let sb = null;
+let supabaseEnabled = false;
+let currentUser = null;
+let realtimeChannel = null;
+
+function initSupabase() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.log('Supabase not configured, using localStorage mode');
+    supabaseEnabled = false;
+    updateSyncDot('offline');
+    return;
+  }
+  try {
+    const s = window.supabase;
+    console.log('Supabase lib:', typeof s, s ? Object.keys(s) : 'null');
+    // supabase-js v2 UMD: createClient is a direct property
+    if (s && typeof s.createClient === 'function') {
+      sb = s.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } else if (s && typeof s === 'function') {
+      sb = s(SUPABASE_URL, SUPABASE_KEY);
+    } else {
+      throw new Error('Cannot find createClient. supabase type: ' + typeof s);
+    }
+    supabaseEnabled = true;
+    console.log('Supabase client ready');
+  } catch(e) {
+    console.error('Supabase init failed:', e.message);
+    supabaseEnabled = false;
+  }
+}
+
+async function loadCloudData() {
+  if (!supabaseEnabled || !supabase) return null;
+  try {
+    const { data, error } = await sb.from('app_data').select('data').eq('id', 1).single();
+    if (error) throw error;
+    return data ? data.data : null;
+  } catch(e) {
+    console.error('Cloud load failed:', e);
+    return null;
+  }
+}
+
+async function saveCloudData(data) {
+  if (!supabaseEnabled || !supabase) return false;
+  try {
+    data.lastModified = new Date().toISOString();
+    const { error } = await sb.from('app_data').upsert({ id: 1, data, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    updateSyncDot('online');
+    return true;
+  } catch(e) {
+    console.error('Cloud save failed:', e);
+    updateSyncDot('offline');
+    return false;
+  }
+}
+
+function subscribeToChanges() {
+  if (!supabaseEnabled || !sb) return;
+  try {
+    realtimeChannel = sb
+      .channel('app_data_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_data' }, (payload) => {
+        const newData = payload.new && payload.new.data;
+        if (newData && newData.version) {
+          console.log('Realtime update received');
+          appData = newData;
+          // Update map markers if on map page
+          Object.keys(mapMarkers).forEach(code => updateMapMarker(code));
+          // Don't re-render page, just update markers
+          showToast('数据已同步', 'success');
+        }
+      })
+      .subscribe();
+    console.log('Realtime subscription active');
+    updateSyncDot('online');
+  } catch(e) {
+    console.error('Realtime subscription failed:', e);
+  }
+}
+
+function updateSyncDot(state) {
+  const dot = document.getElementById('sync-dot');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + state;
+  dot.title = { online: '已连接云端', offline: '离线模式 (localStorage)', syncing: '同步中...' }[state] || '';
+}
+
+// ============================================================
+// DATA LAYER (localStorage + Cloud dual mode)
+// ============================================================
+function loadData() {
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return JSON.parse(raw); } catch(e) {} return null;
+}
+
+function saveData(data) {
+  data.lastModified = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  if (supabaseEnabled) {
+    updateSyncDot('syncing');
+    saveCloudData(data).then(() => updateSyncDot('online')).catch(() => updateSyncDot('offline'));
+  }
+}
+
+function seedAllData() { const countries = {}; COUNTRY_DEFS.forEach(c => { countries[c.code] = createDefaultCountry(c.code); }); return { version: 3, lastModified: new Date().toISOString(), countries }; }
+
+async function initData() {
+  let data = null;
+  // Try cloud first, then localStorage
+  if (supabaseEnabled) {
+    data = await loadCloudData();
+    if (data) console.log('Loaded from cloud');
+  }
+  if (!data) {
+    data = loadData();
+    if (data) console.log('Loaded from localStorage');
+  }
+  if (!data) { data = seedAllData(); await saveData(data); return data; }
+  let changed = false;
+  COUNTRY_DEFS.forEach(c => { if (!data.countries[c.code]) { data.countries[c.code] = createDefaultCountry(c.code); changed = true; } });
+  // Migrate old data to new schema
+  Object.values(data.countries).forEach(country => {
+    if (!country.history) { country.history = genHistory(6, calcScore(country.metrics)); changed = true; }
+    if (!country.workOrderHistory) { country.workOrderHistory = genWorkOrderHistory(6); changed = true; }
+    if (!country.gantt) { country.gantt = createDefaultCountry(country.code).gantt; changed = true; }
+    if (country.kanban) { delete country.kanban; changed = true; }
+    // Ensure new workOrders fields
+    const wo = country.workOrders;
+    if (!wo.weeklyCloseUnder15min) { wo.weeklyCloseUnder15min = { value: rand(70,95), total: rand(100,500) }; changed = true; }
+    if (!wo.abnormalCloseTime) { wo.abnormalCloseTime = { value: rand(2,15), total: rand(10,80) }; changed = true; }
+    if (!wo.missingSettlementTime) { wo.missingSettlementTime = { value: rand(1,10), total: rand(5,50) }; changed = true; }
+    if (!wo.maintenance24hCloseRate) { wo.maintenance24hCloseRate = { value: rand(60,90), total: rand(50,300) }; changed = true; }
+    if (!wo.typeBreakdown) { wo.typeBreakdown = createDefaultCountry(country.code).workOrders.typeBreakdown; changed = true; }
+    if (wo.totalQualifiedRate === undefined) { wo.totalQualifiedRate = rand(80,95); changed = true; }
+    if (!wo.momChange || wo.momChange.entryCount !== undefined) { wo.momChange = { weeklyCloseUnder15min: rand(-5,5), abnormalCloseTime: rand(-3,3), missingSettlementTime: rand(-3,3), maintenance24hCloseRate: rand(-5,5), totalQualifiedRate: rand(-3,3) }; changed = true; }
+    // Migrate TIS/LMS
+    if (country.tisUsage && country.tisUsage.records) {
+      country.tisUsage = { accountUsageRate: rand(40,95), monthlyQA: rand(100,400) }; changed = true;
+    }
+    if (country.lmsUsage && country.lmsUsage.courses) {
+      country.lmsUsage = { accountActivationRate: rand(30,90) }; changed = true;
+    }
+    // Migrate legal sync: old single-object → new projects array
+    if (!country.legalSync.projects) {
+      const old = country.legalSync;
+      country.legalSync = { projects: [{
+        id: genId(),
+        projectName: old.projectName || (COUNTRY_DEFS.find(c=>c.code===country.code)||{}).nameZh + '法务合规项目',
+        status: old.status || 'normal', statusZh: old.statusZh || '正常',
+        lastSyncDate: old.lastSyncDate || '', nextSyncDate: old.nextSyncDate || '',
+        isDelayed: old.isDelayed || false,
+        contactPerson: old.contactPerson || '', contactEmail: old.contactEmail || '',
+        notes: old.notes || ''
+      }]};
+      changed = true;
+    }
+    // Ensure data version
+    if (!data.version || data.version < 3) { data.version = 3; changed = true; }
+  });
+  // Init marketHistory if missing
+  if (!data.marketHistory) { data.marketHistory = seedMarketHistory(); changed = true; }
+  if (changed) await saveData(data);
+  return data;
+}
+
+function seedMarketHistory() {
+  const months = [];
+  for (let i=6;i>=0;i--) { const d=new Date();d.setMonth(d.getMonth()-i); months.push(d.toISOString().slice(0,7)); }
+  return {
+    appUsage:  months.map(m => ({ date: m, value: rand(40,85) })),
+    appLogin:  months.map(m => ({ date: m, value: rand(45,90) })),
+    woDMS:     months.map(m => ({ date: m, value: rand(30,80) })),
+    partsDMS:  months.map(m => ({ date: m, value: rand(25,75) })),
+    lmsAware:  months.map(m => ({ date: m, value: rand(35,85) })),
+    tisAware:  months.map(m => ({ date: m, value: rand(40,88) }))
+  };
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let appData = null, currentMap = null, mapMarkers = {}, activeCountdowns = [];
+function getCountry(code) { return appData.countries[code]; }
+
+// ============================================================
+// ROUTER
+// ============================================================
+function getRoute() {
+  const hash = window.location.hash.replace('#', '') || '/';
+  if (hash === '/') return { page: 'map' };
+  if (hash === '/market') return { page: 'market' };
+  if (hash === '/config') return { page: 'config' };
+  const match = hash.match(/^\/([A-Z]{2})$/);
+  if (match && COUNTRY_DEFS.some(c => c.code === match[1])) return { page: 'country', code: match[1] };
+  return { page: 'map' };
+}
+function navigate(hash) { window.location.hash = hash; }
+function scrollToTop() { window.scrollTo({top: 0, behavior: 'instant'}); }
+
+function handleRoute() {
+  console.log('Route:', window.location.hash);
+  try {
+    activeCountdowns.forEach(id => clearInterval(id));
+    activeCountdowns = [];
+    if (currentMap) { currentMap.remove(); currentMap = null; mapMarkers = {}; }
+    const route = getRoute();
+    updateBreadcrumb(route);
+    const main = document.getElementById('app-main');
+    if (!main) return;
+    if (route.page === 'map') { setTimeout(() => renderMapPage(main), 50); }
+    else if (route.page === 'market') { renderMarketPage(main); scrollToTop(); }
+    else if (route.page === 'config') { renderConfigPage(main); scrollToTop(); }
+    else { renderCountryPage(main, route.code); scrollToTop(); }
+    // Update nav active state
+    document.querySelectorAll('.header-nav-link').forEach(link => {
+      link.classList.toggle('active', link.getAttribute('href') === window.location.hash || (window.location.hash === '' && link.getAttribute('href') === '#/'));
+    });
+  } catch(err) {
+    console.error('Route error:', err);
+    const main = document.getElementById('app-main');
+    if (main) main.innerHTML = `<div style="padding:100px 40px"><h2>Error</h2><pre style="color:red">${err.message}</pre><button onclick="navigate('/')" style="margin-top:20px;padding:8px 16px;cursor:pointer">← Back</button></div>`;
+  }
+}
+
+function updateBreadcrumb(route) {
+  const el = document.getElementById('breadcrumb');
+  el.innerHTML = '';
+}
+
+function showToast(message, type) {
+  type = type || '';
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type; toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = 0; toast.style.transition = 'opacity 300ms'; setTimeout(() => toast.remove(), 300); }, 2500);
+}
+
+// ============================================================
+// MAP PAGE
+// ============================================================
+let chartInstances = {};
+function destroyCharts() { Object.values(chartInstances).forEach(c => { try { c.destroy(); } catch(e) {} }); chartInstances = {}; }
+
+function renderMapPage(container) {
+  destroyCharts();
+  container.innerHTML = '<div id="map-container"></div>';
+  const mapEl = document.getElementById('map-container');
+  if (!mapEl) return;
+  try {
+    currentMap = L.map(mapEl, { center: [5, -75], zoom: 4, zoomControl: true, scrollWheelZoom: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 18 }).addTo(currentMap);
+    const riskColors = { red: '#D94040', yellow: '#D4A040', green: '#40A060' };
+
+    COUNTRY_DEFS.forEach(def => {
+      const country = getCountry(def.code);
+      const score = calcScore(country.metrics);
+      const level = getRiskLevel(score);
+      const label = getRiskLabel(level);
+      const marker = L.circleMarker([def.lat, def.lng], {
+        radius: 12, fillColor: riskColors[level], color: '#FFFFFF', weight: 3,
+        fillOpacity: 1, bubblingMouseEvents: true, interactive: true
+      }).addTo(currentMap);
+      marker.bindTooltip(
+        `<strong>${def.nameZh} ${def.name}</strong><br>Score: ${score} · ${label}<br>${PHASES.find(p=>p.value===country.phase).label}`,
+        { direction: 'top', offset: [0, -10], className: 'country-tooltip', sticky: true }
+      );
+      marker.on('click', function() { window.location.href = '#/' + def.code; });
+      mapMarkers[def.code] = marker;
+    });
+
+    const bounds = L.latLngBounds(COUNTRY_DEFS.map(d => [d.lat, d.lng]));
+    currentMap.fitBounds(bounds, { padding: [30, 30] });
+  } catch(err) {
+    console.error('Map error:', err);
+    container.innerHTML += `<div style="color:red;padding:20px;background:#fff;position:fixed;top:60px;right:20px;z-index:9999;border:2px solid red;border-radius:8px;font-size:14px"><strong>Map Error:</strong> ${err.message}</div>`;
+  }
+
+  const listToggle = document.createElement('button');
+  listToggle.className = 'map-country-list-toggle'; listToggle.innerHTML = '☰'; listToggle.title = 'Country list';
+  listToggle.addEventListener('click', () => { const l = document.getElementById('map-country-list'); if(l) l.classList.toggle('visible'); });
+  container.appendChild(listToggle);
+
+  const list = document.createElement('div'); list.id = 'map-country-list'; list.className = 'map-country-list';
+  list.innerHTML = COUNTRY_DEFS.map(def => {
+    const country = getCountry(def.code); const score = calcScore(country.metrics);
+    const level = getRiskLevel(score); const label = getRiskLabel(level);
+    return `<a href="#/${def.code}" style="text-decoration:none;color:inherit"><span class="status-dot-circle ${level}"></span>${def.nameZh} <span style="color:var(--color-muted)">${score}分 ${label}</span></a>`;
+  }).join('');
+  container.appendChild(list);
+  setTimeout(() => currentMap.invalidateSize(), 100);
+}
+
+function updateMapMarker(code) {
+  if (!mapMarkers[code]) return;
+  const country = getCountry(code); const score = calcScore(country.metrics);
+  const level = getRiskLevel(score); const label = getRiskLabel(level);
+  const riskColors = { red: '#D94040', yellow: '#D4A040', green: '#40A060' };
+  const marker = mapMarkers[code];
+  marker.setStyle({ fillColor: riskColors[level] });
+  const def = COUNTRY_DEFS.find(c => c.code === code);
+  marker.setTooltipContent(`<strong>${def.nameZh} ${def.name}</strong><br>Score: ${score} · ${label}<br>${PHASES.find(p=>p.value===country.phase).label}`);
+}
+
+// ============================================================
+// COUNTRY DETAIL PAGE
+// ============================================================
+function renderCountryPage(container, code) {
+  destroyCharts();
+  const country = getCountry(code);
+  if (!country) { navigate('/'); return; }
+  const score = calcScore(country.metrics);
+  const level = getRiskLevel(score);
+  const phaseInfo = PHASES.find(p => p.value === country.phase);
+
+  container.innerHTML = `
+    <div class="country-detail">
+      <div class="country-header">
+        <div class="country-header-top"><button class="back-btn" onclick="navigate('/')">← Back to Map</button></div>
+        <div class="country-header-info">
+          <div><h1>${country.nameZh}</h1><span class="country-name-en">${country.name}</span></div>
+          <div class="score-display"><span class="score-number ${level}">${score}</span><span class="badge badge-${level}">${getRiskLabel(level)}</span></div>
+          <div class="phase-badge ${country.phase}" id="phase-badge"><span class="phase-dot"></span><span id="phase-label">${phaseInfo.label}</span> <span style="font-size:10px;cursor:pointer;margin-left:4px" onclick="cyclePhase('${code}')">↻</span></div>
+          <button class="btn btn-secondary btn-sm" onclick="exportCountry('${code}')">↓ Export Excel</button>
+          <span style="font-size:var(--text-xs);color:var(--color-faint)">Last modified: ${new Date(country.lastModified).toLocaleString('zh-CN')}</span>
+          ${renderTodoPanel(code, country)}
+        </div>
+      </div>
+      ${renderModuleMetrics(code, country)}
+      ${renderModuleGantt(code, country)}
+      ${renderModuleWorkOrders(code, country)}
+      ${renderModuleTISLMS(code, country)}
+      ${renderModuleRequirements(code, country)}
+      ${renderModuleAccounts(code, country)}
+      ${renderModuleLegalSync(code, country)}
+    </div>
+  `;
+
+  requestAnimationFrame(() => {
+    const sections = container.querySelectorAll('.module-section');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } });
+    }, { threshold: 0.1 });
+    sections.forEach((el, i) => { el.style.transitionDelay = (i * 50) + 'ms'; observer.observe(el); });
+  });
+  startCountdowns();
+}
+
+// ============================================================
+// CONFIG PAGE
+// ============================================================
+let configCountry = 'CO';
+let configSections = {};
+
+function renderConfigPage(container) {
+  destroyCharts();
+  const codes = Object.keys(appData.countries);
+  if (!appData.countries[configCountry]) configCountry = codes[0];
+
+  container.innerHTML = `
+    <div class="config-page">
+      <div style="margin-bottom:var(--space-2xl);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:var(--space-md)">
+        <div>
+          <h2 style="font-size:var(--text-2xl);font-weight:var(--weight-semibold);margin-bottom:var(--space-xs)">配置</h2>
+          <p style="font-size:var(--text-sm);color:var(--color-muted)">录入和编辑所有国家的数据</p>
+        </div>
+        <div style="display:flex;gap:var(--space-sm);align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="cfgExportAll()">↓ 导出全部数据</button>
+          <button class="btn btn-secondary btn-sm" onclick="cfgExportCountry()">↓ 导出当前国家</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">↑ 导入数据<input type="file" accept=".json" style="display:none" onchange="cfgImport(this)"></label>
+          <button class="btn btn-ghost btn-sm" onclick="cfgDownloadTemplate()">下载导入模板</button>
+        </div>
+      </div>
+      <div class="config-country-tabs">${codes.map(c => {
+        const co = appData.countries[c];
+        const s = calcScore(co.metrics);
+        const l = getRiskLevel(s);
+        return `<button class="config-country-tab ${c===configCountry?'active':''}" onclick="switchConfigCountry('${c}')">${co.nameZh}<span style="font-size:10px;margin-left:4px;opacity:0.7">${s}分</span></button>`;
+      }).join('')}</div>
+      <div id="config-form"></div>
+    </div>
+  `;
+  renderConfigForm();
+}
+
+function switchConfigCountry(code) {
+  configCountry = code;
+  const main = document.getElementById('app-main');
+  if (main) { renderConfigPage(main); scrollToTop(); }
+}
+
+function renderConfigForm() {
+  const el = document.getElementById('config-form');
+  if (!el) return;
+  const c = appData.countries[configCountry];
+  const s = calcScore(c.metrics);
+
+  el.innerHTML = `
+    ${section('metrics','核心指标评分 ('+s+'分)', renderConfigMetrics(c))}
+    ${section('gantt','系统对接项目', renderConfigGantt(c))}
+    ${section('workorders','工单数据', renderConfigWorkOrders(c))}
+    ${section('tislms','TIS & LMS', renderConfigTISLMS(c))}
+    ${section('reqs','需求池', renderConfigReqs(c))}
+    ${section('accounts','账号开通', renderConfigAccounts(c))}
+    ${section('legal','法务/开发同步', renderConfigLegal(c))}
+    ${section('hist-metrics','月度指标历史 (折线图数据)', renderConfigHistMetrics(c))}
+    ${section('hist-wo','工单月度历史 (折线图数据)', renderConfigHistWO(c))}
+    ${section('market','整体市场数据 (市场看板图表数据)', renderConfigMarket())}
+  `;
+
+  // Restore open states
+  Object.keys(configSections).forEach(key => {
+    if (configSections[key]) {
+      const sec = document.getElementById('cfg-sec-'+key);
+      if (sec) sec.classList.add('open');
+    }
+  });
+}
+
+function section(key, title, body) {
+  return `<div class="config-section" id="cfg-sec-${key}">
+    <div class="config-section-header" onclick="toggleConfigSection('${key}')">
+      <span>${title}</span>
+      <span style="font-size:10px;color:var(--color-faint)">${configSections[key] ? '收起' : '展开'}</span>
+    </div>
+    <div class="config-section-body">${body}</div>
+  </div>`;
+}
+
+function toggleConfigSection(key) {
+  configSections[key] = !configSections[key];
+  const sec = document.getElementById('cfg-sec-'+key);
+  if (sec) {
+    sec.classList.toggle('open');
+    const span = sec.querySelector('.config-section-header span:last-child');
+    if (span) span.textContent = configSections[key] ? '收起' : '展开';
+  }
+}
+
+function renderConfigMetrics(c) {
+  const defs = [
+    { key:'systemIntegration', zh:'系统对接完成率', max:100, unit:'%' },
+    { key:'workOrderCompleteness', zh:'工单录入完整率', max:100, unit:'%' },
+    { key:'tisAccountUsage', zh:'TIS账号使用率', max:100, unit:'%' },
+    { key:'tisQARecords', zh:'APP使用情况', max:100, unit:'%' },
+    { key:'lmsUsage', zh:'LMS系统使用率', max:100, unit:'%' },
+    { key:'pendingRequirements', zh:'待处理需求数量', max:99, unit:'个' },
+  ];
+  return defs.map(d => {
+    const v = c.metrics[d.key];
+    return `<div class="config-row">
+      <div class="config-label">${d.zh}<small>权重 ${d.key==='systemIntegration'?50:d.key==='workOrderCompleteness'?30:5}分</small></div>
+      <input class="config-input small" type="number" min="0" max="${d.max}" value="${v.value}" onchange="cfgSetMetric('${d.key}','value',this.value)">
+      <span style="font-size:var(--text-xs);color:var(--color-muted)">${d.unit}</span>
+      <input class="config-input wide" type="text" placeholder="备注" value="${escHtml(v.notes||'')}" onchange="cfgSetMetric('${d.key}','notes',this.value)">
+    </div>`;
+  }).join('') + `
+    <div class="config-row">
+      <div class="config-label">风险项<small>-10分</small></div>
+      <label class="config-check"><input type="checkbox" ${c.metrics.riskItems.hasRisks?'checked':''} onchange="cfgSetRisk(this.checked)"> 存在风险项</label>
+      <input class="config-input wide" type="text" placeholder="风险描述" value="${escHtml(c.metrics.riskItems.description||'')}" onchange="cfgSetRiskDesc(this.value)">
+    </div>`;
+}
+
+function renderConfigGantt(c) {
+  const projs = c.gantt.projects || [];
+  return projs.map((p,i) => `
+    <div class="config-row" style="align-items:flex-start">
+      <div class="config-label">${i+1}. <input class="config-input" style="width:160px" type="text" value="${escHtml(p.title)}" onchange="cfgSetGanttProj('${p.id}','title',this.value)"></div>
+      ${['evaluatPct','integratPct','testPct','livePct'].map(ph => {
+        const labels = {evaluatPct:'评估中',integratPct:'对接中',testPct:'测试中',livePct:'已上线'};
+        return `<input class="config-input small" type="number" min="0" max="100" value="${p[ph]||0}" onchange="cfgSetGanttProj('${p.id}','${ph}',this.value)" title="${labels[ph]}">`;
+      }).join('')}
+      <button class="btn btn-danger btn-sm" onclick="cfgDeleteGantt('${p.id}')">删除</button>
+    </div>
+  `).join('') + `
+    <button class="btn btn-secondary btn-sm" onclick="cfgAddGantt()">+ 添加项目</button>`;
+}
+
+function renderConfigWorkOrders(c) {
+  const wo = c.workOrders;
+  const fields = [
+    { key:'weeklyCloseUnder15min', zh:'当周关闭<15min', sub:'Weekly Close <15min' },
+    { key:'abnormalCloseTime', zh:'关闭时间异常', sub:'Abnormal Close Time' },
+    { key:'missingSettlementTime', zh:'缺少结算时间', sub:'Missing Settlement' },
+    { key:'maintenance24hCloseRate', zh:'保养24H关闭率', sub:'Maintenance 24H Close Rate' },
+  ];
+  let html = fields.map(f => `
+    <div class="config-row">
+      <div class="config-label">${f.zh}<small>${f.sub}</small></div>
+      <input class="config-input small" type="number" min="0" max="100" value="${wo[f.key].value}" onchange="cfgSetWO('${f.key}','value',this.value)"> %
+      <span style="font-size:var(--text-xs);color:var(--color-muted)">总数</span>
+      <input class="config-input small" type="number" min="0" value="${wo[f.key].total}" onchange="cfgSetWO('${f.key}','total',this.value)">
+    </div>
+  `).join('');
+  html += `<div class="config-row"><div class="config-label">总合格率</div><input class="config-input small" type="number" min="0" max="100" value="${wo.totalQualifiedRate}" onchange="cfgSetWOTotal(this.value)"> %</div>`;
+  return html;
+}
+
+function renderConfigTISLMS(c) {
+  return `
+    <div class="config-row"><div class="config-label">TIS 账号使用率<small>Account Usage Rate</small></div><input class="config-input small" type="number" min="0" max="100" value="${c.tisUsage.accountUsageRate}" onchange="cfgSetTIS('accountUsageRate',this.value)"> %</div>
+    <div class="config-row"><div class="config-label">TIS 月度问答数量<small>Monthly QA</small></div><input class="config-input small" type="number" min="0" value="${c.tisUsage.monthlyQA}" onchange="cfgSetTIS('monthlyQA',this.value)"></div>
+    <div class="config-row"><div class="config-label">LMS 账号激活率<small>Account Activation Rate</small></div><input class="config-input small" type="number" min="0" max="100" value="${c.lmsUsage.accountActivationRate}" onchange="cfgSetLMS(this.value)"> %</div>`;
+}
+
+function renderConfigReqs(c) {
+  const reqs = c.requirements || [];
+  return reqs.map((r,i) => `
+    <div class="config-row" style="align-items:flex-start">
+      <div class="config-label"><input class="config-input" style="width:180px" type="text" value="${escHtml(r.titleZh||r.title)}" onchange="cfgSetReq('${r.id}','titleZh',this.value)"></div>
+      <select class="config-select" onchange="cfgSetReq('${r.id}','status',this.value)">
+        ${['pending','in-progress','review','completed'].map(s => `<option value="${s}" ${r.status===s?'selected':''}>${{pending:'待处理','in-progress':'进行中',review:'评审中',completed:'已完成'}[s]}</option>`).join('')}
+      </select>
+      <input class="config-input" style="width:120px" type="text" placeholder="负责人" value="${escHtml(r.owner||'')}" onchange="cfgSetReq('${r.id}','owner',this.value)">
+      <input class="config-input wide" type="text" placeholder="备注" value="${escHtml(r.notes||'')}" onchange="cfgSetReq('${r.id}','notes',this.value)">
+      <button class="btn btn-danger btn-sm" onclick="cfgDeleteReq('${r.id}')">删除</button>
+    </div>
+  `).join('') + `<button class="btn btn-secondary btn-sm" onclick="cfgAddReq()">+ 添加需求</button>`;
+}
+
+function renderConfigAccounts(c) {
+  const accs = c.accountActivations || [];
+  return accs.map((a,i) => `
+    <div class="config-row">
+      <div class="config-label"><input class="config-input" style="width:180px" type="text" value="${escHtml(a.accountName)}" onchange="cfgSetAcc('${a.id}','accountName',this.value)"></div>
+      <span style="font-size:var(--text-xs);color:var(--color-muted)">申请</span>
+      <input class="config-input" type="datetime-local" value="${toLocalDT(a.requestedAt)}" onchange="cfgSetAcc('${a.id}','requestedAt',toISO(this.value))">
+      <span style="font-size:var(--text-xs);color:var(--color-muted)">截止</span>
+      <input class="config-input" type="datetime-local" value="${toLocalDT(a.deadlineAt)}" onchange="cfgSetAcc('${a.id}','deadlineAt',toISO(this.value))">
+      <label class="config-check"><input type="checkbox" ${a.activatedAt?'checked':''} onchange="cfgSetAcc('${a.id}','activatedAt',this.checked?new Date().toISOString():null)"> 已开通</label>
+      <button class="btn btn-danger btn-sm" onclick="cfgDeleteAcc('${a.id}')">删除</button>
+    </div>
+  `).join('') + `<button class="btn btn-secondary btn-sm" onclick="cfgAddAcc()">+ 添加账号</button>`;
+}
+
+function renderConfigLegal(c) {
+  const projects = c.legalSync.projects || [];
+  return projects.map((ls, i) => `
+    <div style="border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-md);${i>0?'margin-top:var(--space-md)':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)"><span style="font-weight:var(--weight-semibold);font-size:var(--text-sm)">项目 ${i+1}</span><button class="btn btn-danger btn-sm" onclick="cfgDeleteLegal('${ls.id}')">删除</button></div>
+      <div class="config-row"><div class="config-label">项目名称</div><input class="config-input wide" type="text" value="${escHtml(ls.projectName||'')}" onchange="cfgSetLegalProj('${ls.id}','projectName',this.value)"></div>
+      <div class="config-row"><div class="config-label">状态</div><select class="config-select" onchange="cfgSetLegalProj('${ls.id}','status',this.value);cfgSetLegalProj('${ls.id}','isDelayed',this.value==='delayed')">
+        ${['normal','delayed','completed'].map(s => `<option value="${s}" ${ls.status===s?'selected':''}>${{normal:'正常',delayed:'延迟',completed:'已完成'}[s]}</option>`).join('')}
+      </select></div>
+      <div class="config-row"><div class="config-label">上次同步</div><input class="config-input" type="date" value="${(ls.lastSyncDate||'').slice(0,10)}" onchange="cfgSetLegalProjDate('${ls.id}','lastSyncDate',this.value)"></div>
+      <div class="config-row"><div class="config-label">下次同步</div><input class="config-input" type="date" value="${(ls.nextSyncDate||'').slice(0,10)}" onchange="cfgSetLegalProjDate('${ls.id}','nextSyncDate',this.value)"></div>
+      <div class="config-row"><div class="config-label">联系人</div><input class="config-input" type="text" value="${escHtml(ls.contactPerson||'')}" onchange="cfgSetLegalProj('${ls.id}','contactPerson',this.value)"> <input class="config-input" type="email" value="${escHtml(ls.contactEmail||'')}" onchange="cfgSetLegalProj('${ls.id}','contactEmail',this.value)" placeholder="email"></div>
+      <div class="config-row"><div class="config-label">备注</div><input class="config-input wide" type="text" value="${escHtml(ls.notes||'')}" onchange="cfgSetLegalProj('${ls.id}','notes',this.value)"></div>
+    </div>
+  `).join('') + `<button class="btn btn-secondary btn-sm" onclick="cfgAddLegal()">+ 添加法务项目</button>`;
+}
+
+function getCfgLegalProj(projId) {
+  const c = appData.countries[configCountry];
+  return (c.legalSync.projects || []).find(p => p.id === projId);
+}
+
+function cfgSetLegalProj(projId, field, val) {
+  const proj = getCfgLegalProj(projId); if (!proj) return;
+  if (field === 'isDelayed') {
+    proj.isDelayed = val === true || val === 'true';
+    if (proj.isDelayed && proj.status !== 'delayed') proj.status = 'delayed';
+  } else {
+    proj[field] = val;
+  }
+  cfgSave();
+}
+
+function cfgSetLegalProjDate(projId, field, val) {
+  const proj = getCfgLegalProj(projId); if (!proj) return;
+  proj[field] = val ? new Date(val).toISOString() : '';
+  cfgSave();
+}
+
+function cfgAddLegal() {
+  const c = appData.countries[configCountry];
+  c.legalSync.projects.push({ id: genId(), projectName: '新法务项目', status: 'normal', statusZh: '正常', lastSyncDate: '', nextSyncDate: '', isDelayed: false, contactPerson: '', contactEmail: '', notes: '' });
+  cfgSave(); renderConfigForm();
+}
+
+function cfgDeleteLegal(projId) {
+  if (!confirm('删除此法务项目？')) return;
+  const c = appData.countries[configCountry];
+  c.legalSync.projects = c.legalSync.projects.filter(p => p.id !== projId);
+  cfgSave(); renderConfigForm();
+}
+
+function renderConfigHistMetrics(c) {
+  const hist = c.history || [];
+  const fields = [
+    { key:'systemIntegration', zh:'系统对接' },
+    { key:'workOrderCompleteness', zh:'工单录入' },
+    { key:'tisAccountUsage', zh:'TIS账号' },
+    { key:'tisQARecords', zh:'APP使用' },
+    { key:'lmsUsage', zh:'LMS使用' },
+    { key:'pendingRequirements', zh:'待处理需求' },
+    { key:'hasRisks', zh:'风险项' }
+  ];
+  return `<div style="overflow-x:auto">
+    <table class="data-table"><thead><tr><th>月份</th>${fields.map(f=>`<th class="text-center">${f.zh}</th>`).join('')}<th class="text-center">总分</th><th></th></tr></thead>
+    <tbody>${hist.map((h,i) => `
+      <tr>
+        <td><input class="config-input" style="width:100px" type="month" value="${h.date}" onchange="cfgSetHist('${i}','date',this.value)"></td>
+        ${fields.map(f => {
+          if (f.key === 'hasRisks') return `<td class="text-center"><input type="checkbox" ${h.hasRisks?'checked':''} onchange="cfgSetHist('${i}','hasRisks',this.checked)"></td>`;
+          if (f.key === 'pendingRequirements') return `<td class="text-center"><input class="config-input small" type="number" min="0" max="99" value="${h[f.key]||0}" onchange="cfgSetHist('${i}','${f.key}',this.value)"></td>`;
+          return `<td class="text-center"><input class="config-input small" type="number" min="0" max="100" value="${h[f.key]||0}" onchange="cfgSetHist('${i}','${f.key}',this.value)"></td>`;
+        }).join('')}
+        <td class="text-center" style="font-weight:var(--weight-semibold)">${calcScoreFromHistory(h)}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="cfgDeleteHist('${i}')">删除</button></td>
+      </tr>
+    `).join('')}</tbody></table>
+    <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="cfgAddHist()">+ 添加月份</button>
+  </div>`;
+}
+
+function renderConfigHistWO(c) {
+  const hist = c.workOrderHistory || [];
+  const fields = [
+    { key:'closeUnder15min', zh:'<15min关闭率' },
+    { key:'abnormalClose', zh:'关闭异常率' },
+    { key:'missingSettlement', zh:'缺结算率' },
+    { key:'maintenance24hClose', zh:'保养24H关闭率' },
+    { key:'totalQualified', zh:'总合格率' }
+  ];
+  return `<div style="overflow-x:auto">
+    <table class="data-table"><thead><tr><th>月份</th>${fields.map(f=>`<th class="text-center">${f.zh}</th>`).join('')}<th></th></tr></thead>
+    <tbody>${hist.map((h,i) => `
+      <tr>
+        <td><input class="config-input" style="width:100px" type="month" value="${h.date}" onchange="cfgSetWOHist('${i}','date',this.value)"></td>
+        ${fields.map(f => `<td class="text-center"><input class="config-input small" type="number" min="0" max="100" value="${h[f.key]||0}" onchange="cfgSetWOHist('${i}','${f.key}',this.value)"></td>`).join('')}
+        <td><button class="btn btn-danger btn-sm" onclick="cfgDeleteWOHist('${i}')">删除</button></td>
+      </tr>
+    `).join('')}</tbody></table>
+    <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="cfgAddWOHist()">+ 添加月份</button>
+  </div>`;
+}
+
+function cfgSetHist(idx, field, val) {
+  const c = appData.countries[configCountry];
+  if (!c.history[idx]) return;
+  if (field === 'hasRisks') { c.history[idx].hasRisks = val === true || val === 'true'; }
+  else if (field === 'date') { c.history[idx].date = val; }
+  else if (field === 'pendingRequirements') { c.history[idx][field] = Math.max(0, parseInt(val)||0); }
+  else { c.history[idx][field] = Math.max(0, Math.min(100, parseInt(val)||0)); }
+  cfgSave();
+}
+
+function cfgAddHist() {
+  const c = appData.countries[configCountry];
+  const d = new Date();
+  c.history.push({ date: d.toISOString().slice(0,7), score: 0, systemIntegration:0, workOrderCompleteness:0, tisAccountUsage:0, tisQARecords:0, lmsUsage:0, pendingRequirements:0, hasRisks:false });
+  cfgSave(); renderConfigForm();
+}
+
+function cfgDeleteHist(idx) {
+  if (!confirm('删除此月份数据？')) return;
+  const c = appData.countries[configCountry];
+  c.history.splice(idx, 1);
+  cfgSave(); renderConfigForm();
+}
+
+function cfgSetWOHist(idx, field, val) {
+  const c = appData.countries[configCountry];
+  if (!c.workOrderHistory[idx]) return;
+  if (field === 'date') { c.workOrderHistory[idx].date = val; }
+  else { c.workOrderHistory[idx][field] = Math.max(0, Math.min(100, parseInt(val)||0)); }
+  cfgSave();
+}
+
+function cfgAddWOHist() {
+  const c = appData.countries[configCountry];
+  const d = new Date();
+  c.workOrderHistory.push({ date: d.toISOString().slice(0,7), closeUnder15min:0, abnormalClose:0, missingSettlement:0, maintenance24hClose:0, totalQualified:0 });
+  cfgSave(); renderConfigForm();
+}
+
+function cfgDeleteWOHist(idx) {
+  if (!confirm('删除此月份数据？')) return;
+  const c = appData.countries[configCountry];
+  c.workOrderHistory.splice(idx, 1);
+  cfgSave(); renderConfigForm();
+}
+
+function renderConfigMarket() {
+  const mh = appData.marketHistory;
+  const sections = [
+    { key:'appUsage', zh:'APP使用率 %', sub:'AI技师使用情况' },
+    { key:'appLogin', zh:'APP登录率 %', sub:'APP登录情况' },
+    { key:'woDMS', zh:'工单对接 %', sub:'DMS工单对接整体百分比' },
+    { key:'partsDMS', zh:'备件对接 %', sub:'DMS备件对接整体百分比' },
+    { key:'lmsAware', zh:'LMS普及率 %', sub:'LMS普及率月度变化' },
+    { key:'tisAware', zh:'TIS使用率 %', sub:'TIS使用率月度变化' }
+  ];
+  const months = (mh.appUsage||[]).map(h => h.date);
+  const monthHeaders = months.map(m => { const p=m.split('-'); return p[1]?p[0].slice(2)+'年'+parseInt(p[1])+'月':m; });
+  let html = `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>指标</th>${monthHeaders.map(m => `<th class="text-center">${m}</th>`).join('')}</tr></thead><tbody>`;
+  sections.forEach(sec => {
+    const series = mh[sec.key] || [];
+    html += `<tr><td style="font-weight:var(--weight-medium)">${sec.zh}<br><small style="color:var(--color-muted)">${sec.sub}</small></td>`;
+    series.forEach((pt, i) => { html += `<td class="text-center"><input class="config-input small" type="number" min="0" max="100" value="${pt.value}" onchange="cfgSetMarketVal('${sec.key}',${i},this.value)"></td>`; });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  html += `<div style="margin-top:var(--space-md);display:flex;gap:var(--space-sm);align-items:center">
+    <button class="btn btn-secondary btn-sm" onclick="cfgAddMarketMonth()">+ 添加月份</button>
+    <button class="btn btn-ghost btn-sm" onclick="cfgRemoveMarketMonth()">- 删除最后月份</button>
+    <span style="font-size:var(--text-xs);color:var(--color-muted)">修改后整体市场图表立即更新</span></div>`;
+  return html;
+}
+
+function cfgSetMarketVal(key, idx, val) {
+  const series = appData.marketHistory[key];
+  if (!series || !series[idx]) return;
+  series[idx].value = Math.max(0, Math.min(100, parseInt(val)||0));
+  saveData(appData);
+}
+
+function cfgAddMarketMonth() {
+  const mh = appData.marketHistory;
+  const keys = ['appUsage','appLogin','woDMS','partsDMS','lmsAware','tisAware'];
+  const last = (mh.appUsage||[]).length>0 ? mh.appUsage[mh.appUsage.length-1].date : new Date().toISOString().slice(0,7);
+  const d = new Date(last+'-01'); d.setMonth(d.getMonth()+1);
+  const nd = d.toISOString().slice(0,7);
+  keys.forEach(k => { if(mh[k]) mh[k].push({date:nd,value:0}); else mh[k]=[{date:nd,value:0}]; });
+  saveData(appData); renderConfigForm();
+}
+
+function cfgRemoveMarketMonth() {
+  if (!confirm('删除最后一个月？')) return;
+  ['appUsage','appLogin','woDMS','partsDMS','lmsAware','tisAware'].forEach(k => {
+    if (appData.marketHistory[k] && appData.marketHistory[k].length>1) appData.marketHistory[k].pop();
+  });
+  saveData(appData); renderConfigForm();
+}
+
+function cfgExportAll() {
+  const wb = XLSX.utils.book_new();
+  const all = Object.values(appData.countries);
+
+  // Sheet 1: 国家总览
+  addSheet(wb, all.map(c => {
+    const s = calcScore(c.metrics);
+    return {
+      '代码': c.code, '国家': c.nameZh, '英文名': c.name,
+      '成熟度总分': s, '风险等级': getRiskLabel(getRiskLevel(s)),
+      '阶段': PHASES.find(p=>p.value===c.phase).label,
+      '系统对接%': c.metrics.systemIntegration.value,
+      '工单录入%': c.metrics.workOrderCompleteness.value,
+      'TIS账号%': c.metrics.tisAccountUsage.value,
+      'APP使用%': c.metrics.tisQARecords.value,
+      'LMS使用%': c.metrics.lmsUsage.value,
+      '待处理需求': c.metrics.pendingRequirements.value,
+      '有风险项': c.metrics.riskItems.hasRisks?'是':'否',
+      '风险描述': c.metrics.riskItems.description||''
+    };
+  }), '国家总览');
+
+  // Sheet 2: 系统对接
+  const ganttRows = [];
+  all.forEach(c => {
+    (c.gantt.projects||[]).forEach(p => {
+      ganttRows.push({ '国家代码': c.code, '国家': c.nameZh, '项目': p.title, '评估中%': p.evaluatPct, '对接中%': p.integratPct, '测试中%': p.testPct, '已上线%': p.livePct, '备注': p.notes||'' });
+    });
+  });
+  addSheet(wb, ganttRows, '系统对接');
+
+  // Sheet 3: 工单数据
+  addSheet(wb, all.map(c => ({
+    '国家代码': c.code, '国家': c.nameZh,
+    '<15min关闭%': c.workOrders.weeklyCloseUnder15min.value, '<15min关闭总数': c.workOrders.weeklyCloseUnder15min.total,
+    '关闭异常%': c.workOrders.abnormalCloseTime.value, '关闭异常总数': c.workOrders.abnormalCloseTime.total,
+    '缺结算%': c.workOrders.missingSettlementTime.value, '缺结算总数': c.workOrders.missingSettlementTime.total,
+    '保养24H关闭%': c.workOrders.maintenance24hCloseRate.value, '保养24H关闭总数': c.workOrders.maintenance24hCloseRate.total,
+    '总合格率%': c.workOrders.totalQualifiedRate
+  })), '工单数据');
+
+  // Sheet 4: TIS & LMS
+  addSheet(wb, all.map(c => ({
+    '国家代码': c.code, '国家': c.nameZh,
+    'TIS账号使用率%': c.tisUsage.accountUsageRate,
+    'TIS月度问答': c.tisUsage.monthlyQA,
+    'LMS账号激活率%': c.lmsUsage.accountActivationRate
+  })), 'TIS LMS');
+
+  // Sheet 5: 需求池
+  const reqRows = [];
+  all.forEach(c => {
+    (c.requirements||[]).forEach(r => {
+      reqRows.push({ '国家代码': c.code, '国家': c.nameZh, '标题': r.titleZh||r.title, '状态': r.statusZh||r.status, '负责人': r.owner||'', '备注': r.notes||'' });
+    });
+  });
+  addSheet(wb, reqRows, '需求池');
+
+  // Sheet 6: 账号开通
+  const accRows = [];
+  all.forEach(c => {
+    (c.accountActivations||[]).forEach(a => {
+      accRows.push({ '国家代码': c.code, '国家': c.nameZh, '账号': a.accountName, '申请时间': a.requestedAt||'', '截止时间': a.deadlineAt||'', '已开通': a.activatedAt?'是':'否', '备注': a.notes||'' });
+    });
+  });
+  addSheet(wb, accRows, '账号开通');
+
+  // Sheet 7: 法务同步
+  const legalRows = [];
+  all.forEach(c => {
+    (c.legalSync.projects||[]).forEach(p => {
+      legalRows.push({ '国家代码': c.code, '国家': c.nameZh, '项目名': p.projectName||'', '状态': p.statusZh||p.status, '上次同步': (p.lastSyncDate||'').slice(0,10), '下次同步': (p.nextSyncDate||'').slice(0,10), '延迟': p.isDelayed?'是':'否', '联系人': p.contactPerson||'', '邮箱': p.contactEmail||'', '备注': p.notes||'' });
+    });
+  });
+  addSheet(wb, legalRows, '法务同步');
+
+  XLSX.writeFile(wb, 'blueprint-全部数据.xlsx');
+  showToast('全部数据已导出', 'success');
+}
+
+function cfgExportCountry() {
+  exportCountry(configCountry);
+}
+
+function cfgDownloadTemplate() {
+  const wb = XLSX.utils.book_new();
+
+  // 国家总览 模板
+  addSheet(wb, [{
+    '代码': 'XX', '国家': '示例', '英文名': 'Example', '成熟度总分': 0, '风险等级': '', '阶段': '准备中',
+    '系统对接%': 0, '工单录入%': 0, 'TIS账号%': 0, 'APP使用%': 0, 'LMS使用%': 0,
+    '待处理需求': 0, '有风险项': '否', '风险描述': ''
+  }], '国家总览');
+
+  // 系统对接 模板
+  addSheet(wb, [{ '国家代码': 'XX', '国家': '示例', '项目': '示例项目', '评估中%': 0, '对接中%': 0, '测试中%': 0, '已上线%': 0, '备注': '' }], '系统对接');
+
+  // 工单数据 模板
+  addSheet(wb, [{ '国家代码': 'XX', '国家': '示例', '<15min关闭%': 0, '<15min关闭总数': 0, '关闭异常%': 0, '关闭异常总数': 0, '缺结算%': 0, '缺结算总数': 0, '保养24H关闭%': 0, '保养24H关闭总数': 0, '总合格率%': 0 }], '工单数据');
+
+  // TIS LMS 模板
+  addSheet(wb, [{ '国家代码': 'XX', '国家': '示例', 'TIS账号使用率%': 0, 'TIS月度问答': 0, 'LMS账号激活率%': 0 }], 'TIS LMS');
+
+  // 需求池 模板
+  addSheet(wb, [{ '国家代码': 'XX', '国家': '示例', '标题': '示例需求', '状态': '待处理', '负责人': '', '备注': '' }], '需求池');
+
+  // 账号开通 模板
+  addSheet(wb, [{ '国家代码': 'XX', '国家': '示例', '账号': '示例账号', '申请时间': '', '截止时间': '', '已开通': '否', '备注': '' }], '账号开通');
+
+  // 法务同步 模板
+  addSheet(wb, [{ '国家代码': 'XX', '国家': '示例', '项目名': '示例法务项目', '状态': '正常', '上次同步': '', '下次同步': '', '延迟': '否', '联系人': '', '邮箱': '', '备注': '' }], '法务同步');
+
+  XLSX.writeFile(wb, 'blueprint-导入模板.xlsx');
+  showToast('模板已下载', 'success');
+}
+
+function cfgImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const mode = confirm('导入将合并覆盖对应国家的数据，确定继续？');
+      if (!mode) { input.value = ''; return; }
+
+      // Sheet 1: 国家总览 → restore core metrics + phase
+      const overview = XLSX.utils.sheet_to_json(wb.Sheets['国家总览']||wb.Sheets[wb.SheetNames[0]]||{});
+      overview.forEach(row => {
+        const code = (row['代码']||'').trim();
+        if (!code || !appData.countries[code]) return;
+        const c = appData.countries[code];
+        c.nameZh = row['国家'] || c.nameZh;
+        c.name = row['英文名'] || c.name;
+        const phaseMap = { '准备中': 'preparing', '正在进行': 'in-progress', '已完成': 'completed' };
+        c.phase = phaseMap[row['阶段']] || c.phase;
+        c.metrics.systemIntegration.value = parseInt(row['系统对接%'])||0;
+        c.metrics.workOrderCompleteness.value = parseInt(row['工单录入%'])||0;
+        c.metrics.tisAccountUsage.value = parseInt(row['TIS账号%'])||0;
+        c.metrics.tisQARecords.value = parseInt(row['APP使用%'])||0;
+        c.metrics.lmsUsage.value = parseInt(row['LMS使用%'])||0;
+        c.metrics.pendingRequirements.value = parseInt(row['待处理需求'])||0;
+        c.metrics.riskItems.hasRisks = row['有风险项'] === '是';
+        c.metrics.riskItems.description = row['风险描述']||'';
+        c.lastModified = new Date().toISOString();
+      });
+
+      // Sheet 2: 系统对接
+      const ganttSheet = wb.Sheets['系统对接'];
+      if (ganttSheet) {
+        const rows = XLSX.utils.sheet_to_json(ganttSheet);
+        const ganttByCode = {};
+        rows.forEach(row => {
+          const code = (row['国家代码']||'').trim();
+          if (!code) return;
+          if (!ganttByCode[code]) ganttByCode[code] = [];
+          ganttByCode[code].push({
+            id: genId(), title: row['项目']||'新项目',
+            evaluatPct: parseInt(row['评估中%'])||0, integratPct: parseInt(row['对接中%'])||0,
+            testPct: parseInt(row['测试中%'])||0, livePct: parseInt(row['已上线%'])||0,
+            notes: row['备注']||'', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+          });
+        });
+        Object.keys(ganttByCode).forEach(code => {
+          if (appData.countries[code]) appData.countries[code].gantt.projects = ganttByCode[code];
+        });
+      }
+
+      // Sheet 3: 工单数据
+      const woSheet = wb.Sheets['工单数据'];
+      if (woSheet) {
+        XLSX.utils.sheet_to_json(woSheet).forEach(row => {
+          const code = (row['国家代码']||'').trim();
+          if (!code || !appData.countries[code]) return;
+          const wo = appData.countries[code].workOrders;
+          wo.weeklyCloseUnder15min.value = parseInt(row['<15min关闭%'])||0;
+          wo.weeklyCloseUnder15min.total = parseInt(row['<15min关闭总数'])||0;
+          wo.abnormalCloseTime.value = parseInt(row['关闭异常%'])||0;
+          wo.abnormalCloseTime.total = parseInt(row['关闭异常总数'])||0;
+          wo.missingSettlementTime.value = parseInt(row['缺结算%'])||0;
+          wo.missingSettlementTime.total = parseInt(row['缺结算总数'])||0;
+          wo.maintenance24hCloseRate.value = parseInt(row['保养24H关闭%'])||0;
+          wo.maintenance24hCloseRate.total = parseInt(row['保养24H关闭总数'])||0;
+          wo.totalQualifiedRate = parseInt(row['总合格率%'])||0;
+        });
+      }
+
+      // Sheet 4: TIS LMS
+      const tlSheet = wb.Sheets['TIS LMS'];
+      if (tlSheet) {
+        XLSX.utils.sheet_to_json(tlSheet).forEach(row => {
+          const code = (row['国家代码']||'').trim();
+          if (!code || !appData.countries[code]) return;
+          appData.countries[code].tisUsage.accountUsageRate = parseInt(row['TIS账号使用率%'])||0;
+          appData.countries[code].tisUsage.monthlyQA = parseInt(row['TIS月度问答'])||0;
+          appData.countries[code].lmsUsage.accountActivationRate = parseInt(row['LMS账号激活率%'])||0;
+        });
+      }
+
+      // Sheet 5: 需求池
+      const reqSheet = wb.Sheets['需求池'];
+      if (reqSheet) {
+        const reqByCode = {};
+        XLSX.utils.sheet_to_json(reqSheet).forEach(row => {
+          const code = (row['国家代码']||'').trim();
+          if (!code) return;
+          if (!reqByCode[code]) reqByCode[code] = [];
+          reqByCode[code].push({
+            id: genId(), title: row['标题']||'', titleZh: row['标题']||'',
+            status: row['状态']||'pending', statusZh: row['状态']||'待处理',
+            owner: row['负责人']||'', domesticScheduleUrl: '',
+            notes: row['备注']||'', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+          });
+        });
+        Object.keys(reqByCode).forEach(code => {
+          if (appData.countries[code]) appData.countries[code].requirements = reqByCode[code];
+        });
+      }
+
+      // Sheet 6: 账号开通
+      const accSheet = wb.Sheets['账号开通'];
+      if (accSheet) {
+        const accByCode = {};
+        XLSX.utils.sheet_to_json(accSheet).forEach(row => {
+          const code = (row['国家代码']||'').trim();
+          if (!code) return;
+          if (!accByCode[code]) accByCode[code] = [];
+          accByCode[code].push({
+            id: genId(), accountName: row['账号']||'',
+            requestedAt: row['申请时间']||new Date().toISOString(),
+            deadlineAt: row['截止时间']||new Date(Date.now()+48*3600000).toISOString(),
+            activatedAt: row['已开通']==='是'?new Date().toISOString():null,
+            notes: row['备注']||''
+          });
+        });
+        Object.keys(accByCode).forEach(code => {
+          if (appData.countries[code]) appData.countries[code].accountActivations = accByCode[code];
+        });
+      }
+
+      // Sheet 7: 法务同步
+      const legalSheet = wb.Sheets['法务同步'];
+      if (legalSheet) {
+        const legalByCode = {};
+        XLSX.utils.sheet_to_json(legalSheet).forEach(row => {
+          const code = (row['国家代码']||'').trim();
+          if (!code) return;
+          if (!legalByCode[code]) legalByCode[code] = [];
+          legalByCode[code].push({
+            id: genId(), projectName: row['项目名']||'',
+            status: row['状态']||'normal', statusZh: row['状态']||'正常',
+            lastSyncDate: row['上次同步']?new Date(row['上次同步']).toISOString():'',
+            nextSyncDate: row['下次同步']?new Date(row['下次同步']).toISOString():'',
+            isDelayed: row['延迟']==='是',
+            contactPerson: row['联系人']||'', contactEmail: row['邮箱']||'',
+            notes: row['备注']||''
+          });
+        });
+        Object.keys(legalByCode).forEach(code => {
+          if (appData.countries[code]) appData.countries[code].legalSync.projects = legalByCode[code];
+        });
+      }
+
+      saveData(appData);
+      const count = Object.keys(overview).length || '?';
+      showToast('已导入数据', 'success');
+      handleRoute();
+    } catch(err) {
+      showToast('导入失败: ' + err.message, 'error');
+      console.error(err);
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Config helpers
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toLocalDT(iso) { if(!iso) return ''; const d=new Date(iso); if(isNaN(d.getTime())) return ''; return d.toISOString().slice(0,16); }
+function toISO(local) { if(!local) return ''; return new Date(local).toISOString(); }
+
+function cfgSave() { appData.countries[configCountry].lastModified = new Date().toISOString(); saveData(appData); updateMapMarker(configCountry); }
+
+function cfgSetMetric(key, field, val) {
+  const c = appData.countries[configCountry];
+  if (field === 'value') c.metrics[key].value = Math.max(0, Math.min(key==='pendingRequirements'?99:100, parseInt(val)||0));
+  else c.metrics[key].notes = val;
+  // Re-render header score
+  const el = document.getElementById('config-form');
+  if (el) { renderConfigForm(); }
+  cfgSave();
+}
+
+function cfgSetRisk(val) { appData.countries[configCountry].metrics.riskItems.hasRisks = val; cfgSave(); }
+function cfgSetRiskDesc(val) { appData.countries[configCountry].metrics.riskItems.description = val; cfgSave(); }
+
+function cfgSetGanttProj(id, field, val) {
+  const c = appData.countries[configCountry];
+  const p = c.gantt.projects.find(p => p.id === id);
+  if (!p) return;
+  if (field === 'title') p.title = val;
+  else p[field] = Math.max(0, Math.min(100, parseInt(val)||0));
+  p.updatedAt = new Date().toISOString(); cfgSave();
+}
+
+function cfgAddGantt() {
+  const c = appData.countries[configCountry];
+  c.gantt.projects.push({ id: genId(), title: '新项目', evaluatPct:0, integratPct:0, testPct:0, livePct:0, notes:'', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
+  cfgSave(); renderConfigForm();
+}
+
+function cfgDeleteGantt(id) {
+  if (!confirm('删除此项目？')) return;
+  const c = appData.countries[configCountry];
+  c.gantt.projects = c.gantt.projects.filter(p => p.id !== id);
+  cfgSave(); renderConfigForm();
+}
+
+function cfgSetWO(key, field, val) {
+  const c = appData.countries[configCountry];
+  c.workOrders[key][field] = field === 'value' ? Math.max(0, Math.min(100, parseInt(val)||0)) : Math.max(0, parseInt(val)||0);
+  cfgSave();
+}
+
+function cfgSetWOTotal(val) {
+  appData.countries[configCountry].workOrders.totalQualifiedRate = Math.max(0, Math.min(100, parseInt(val)||0));
+  cfgSave();
+}
+
+function cfgSetTIS(field, val) {
+  appData.countries[configCountry].tisUsage[field] = field === 'accountUsageRate' ? Math.max(0, Math.min(100, parseInt(val)||0)) : Math.max(0, parseInt(val)||0);
+  cfgSave();
+}
+
+function cfgSetLMS(val) {
+  appData.countries[configCountry].lmsUsage.accountActivationRate = Math.max(0, Math.min(100, parseInt(val)||0));
+  cfgSave();
+}
+
+function cfgSetReq(id, field, val) {
+  const c = appData.countries[configCountry];
+  const r = c.requirements.find(r => r.id === id);
+  if (!r) return;
+  r[field] = val;
+  if (field === 'titleZh') r.title = val;
+  if (field === 'status') { const labels = {pending:'待处理','in-progress':'进行中',review:'评审中',completed:'已完成'}; r.statusZh = labels[val] || val; }
+  r.updatedAt = new Date().toISOString(); cfgSave();
+}
+
+function cfgAddReq() {
+  const c = appData.countries[configCountry];
+  c.requirements.push({ id:genId(), title:'新需求', titleZh:'新需求', status:'pending', statusZh:'待处理', owner:'', domesticScheduleUrl:'', notes:'', createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
+  cfgSave(); renderConfigForm();
+}
+
+function cfgDeleteReq(id) {
+  if (!confirm('删除此需求？')) return;
+  const c = appData.countries[configCountry];
+  c.requirements = c.requirements.filter(r => r.id !== id);
+  cfgSave(); renderConfigForm();
+}
+
+function cfgSetAcc(id, field, val) {
+  const c = appData.countries[configCountry];
+  const a = c.accountActivations.find(a => a.id === id);
+  if (!a) return;
+  a[field] = val;
+  cfgSave();
+}
+
+function cfgAddAcc() {
+  const c = appData.countries[configCountry];
+  const now = new Date();
+  c.accountActivations.push({ id:genId(), accountName:'新账号', requestedAt:now.toISOString(), deadlineAt:new Date(now.getTime()+48*3600000).toISOString(), activatedAt:null, notes:'' });
+  cfgSave(); renderConfigForm();
+}
+
+function cfgDeleteAcc(id) {
+  if (!confirm('删除此账号？')) return;
+  const c = appData.countries[configCountry];
+  c.accountActivations = c.accountActivations.filter(a => a.id !== id);
+  cfgSave(); renderConfigForm();
+}
+
+// ============================================================
+// MARKET OVERVIEW PAGE
+// ============================================================
+function renderMarketPage(container) {
+  destroyCharts();
+  const n = Object.keys(appData.countries).length;
+
+  // Use marketHistory for all chart data
+  const mh = appData.marketHistory;
+  const getSeries = (key) => (mh[key]||[]).map(h => h.value);
+  const getLastVal = (key) => { const s = mh[key]; return s && s.length ? s[s.length-1].value : 0; };
+  const getMonthLabels = () => (mh.appUsage||[]).map(h => { const p=h.date.split('-'); return p[1]?p[0].slice(2)+'年'+parseInt(p[1])+'月':h.date; });
+
+  const monthLabels = getMonthLabels();
+
+  // 1. APP usage
+  const appUsageRate = getLastVal('appUsage');
+  const appLoginRate = getLastVal('appLogin');
+  const appUsageHist = getSeries('appUsage');
+  const appLoginHist = getSeries('appLogin');
+
+  // 2. DMS integration
+  const woDMSRate = getLastVal('woDMS');
+  const partsDMSRate = getLastVal('partsDMS');
+  const woMonthData = getSeries('woDMS');
+  const partsMonthData = getSeries('partsDMS');
+
+  // 3. Digital awareness
+  const lmsRate = getLastVal('lmsAware');
+  const tisRate = getLastVal('tisAware');
+  const lmsMonthHist = getSeries('lmsAware');
+  const tisMonthHist = getSeries('tisAware');
+
+  container.innerHTML = `
+    <div class="market-page">
+      <div style="margin-bottom:var(--space-2xl)">
+        <h2 style="font-size:var(--text-2xl);font-weight:var(--weight-semibold);margin-bottom:var(--space-xs)">整体市场情况</h2>
+        <p style="font-size:var(--text-sm);color:var(--color-muted)">${n} 国代理商数字化全景 · 数据实时汇总</p>
+      </div>
+
+      <!-- Section 1: APP Usage -->
+      <div class="market-section" id="market-sec-app">
+        <div class="market-section-header">
+          <div>
+            <h3 style="font-size:var(--text-lg);font-weight:var(--weight-semibold)">用户端 APP 使用情况</h3>
+            <p style="font-size:var(--text-xs);color:var(--color-muted);margin-top:2px">AI技师使用 · APP登录 · 整体活跃度</p>
+          </div>
+          <div style="display:flex;gap:var(--space-xl)">
+            <div style="text-align:center"><div style="font-size:var(--text-2xl);font-weight:var(--weight-bold)">${appUsageRate}%</div><div style="font-size:var(--text-xs);color:var(--color-muted)">APP使用率</div></div>
+            <div style="text-align:center"><div style="font-size:var(--text-2xl);font-weight:var(--weight-bold)">${appLoginRate}%</div><div style="font-size:var(--text-xs);color:var(--color-muted)">APP登录率</div></div>
+          </div>
+        </div>
+        <div class="market-section-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xl)">
+            <div><div style="font-size:var(--text-sm);font-weight:var(--weight-medium);margin-bottom:var(--space-md);color:var(--color-muted)">AI技师使用情况 (月度)</div><canvas id="chart-app-usage" height="200"></canvas></div>
+            <div><div style="font-size:var(--text-sm);font-weight:var(--weight-medium);margin-bottom:var(--space-md);color:var(--color-muted)">APP登录情况 (月度)</div><canvas id="chart-app-login" height="200"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: DMS Integration -->
+      <div class="market-section" id="market-sec-dms">
+        <div class="market-section-header">
+          <div>
+            <h3 style="font-size:var(--text-lg);font-weight:var(--weight-semibold)">DMS 接口开发情况</h3>
+            <p style="font-size:var(--text-xs);color:var(--color-muted);margin-top:2px">工单对接 · 备件对接 · 系统集成进度</p>
+          </div>
+          <div style="display:flex;gap:var(--space-xl)">
+            <div style="text-align:center"><div style="font-size:var(--text-2xl);font-weight:var(--weight-bold)">${woDMSRate}%</div><div style="font-size:var(--text-xs);color:var(--color-muted)">工单对接</div></div>
+            <div style="text-align:center"><div style="font-size:var(--text-2xl);font-weight:var(--weight-bold)">${partsDMSRate}%</div><div style="font-size:var(--text-xs);color:var(--color-muted)">备件对接</div></div>
+          </div>
+        </div>
+        <div class="market-section-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xl)">
+            <div><div style="font-size:var(--text-sm);font-weight:var(--weight-medium);margin-bottom:var(--space-md);color:var(--color-muted)">工单对接整体百分比 (月度)</div><canvas id="chart-dms-wo" height="200"></canvas></div>
+            <div><div style="font-size:var(--text-sm);font-weight:var(--weight-medium);margin-bottom:var(--space-md);color:var(--color-muted)">备件对接整体百分比 (月度)</div><canvas id="chart-dms-parts" height="200"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Digital Awareness -->
+      <div class="market-section" id="market-sec-awareness">
+        <div class="market-section-header">
+          <div>
+            <h3 style="font-size:var(--text-lg);font-weight:var(--weight-semibold)">代理商人员数字化认知情况</h3>
+            <p style="font-size:var(--text-xs);color:var(--color-muted);margin-top:2px">LMS普及率 · TIS使用率 · 月度趋势</p>
+          </div>
+          <div style="display:flex;gap:var(--space-xl)">
+            <div style="text-align:center"><div style="font-size:var(--text-2xl);font-weight:var(--weight-bold)">${lmsRate}%</div><div style="font-size:var(--text-xs);color:var(--color-muted)">LMS普及率</div></div>
+            <div style="text-align:center"><div style="font-size:var(--text-2xl);font-weight:var(--weight-bold)">${tisRate}%</div><div style="font-size:var(--text-xs);color:var(--color-muted)">TIS使用率</div></div>
+          </div>
+        </div>
+        <div class="market-section-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xl)">
+            <div><div style="font-size:var(--text-sm);font-weight:var(--weight-medium);margin-bottom:var(--space-md);color:var(--color-muted)">LMS普及率月度变化</div><canvas id="chart-awareness-lms" height="200"></canvas></div>
+            <div><div style="font-size:var(--text-sm);font-weight:var(--weight-medium);margin-bottom:var(--space-md);color:var(--color-muted)">TIS使用率月度变化</div><canvas id="chart-awareness-tis" height="200"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Render all 6 charts
+  setTimeout(() => {
+    const color1 = '#C25732', color2 = '#5BA0B0';
+    renderMarketChart('chart-app-usage', monthLabels, [{ label:'APP使用率 %', data:appUsageHist, color:color1, fill:true }]);
+    renderMarketChart('chart-app-login', monthLabels, [{ label:'APP登录率 %', data:appLoginHist, color:color2, fill:true }]);
+    renderMarketChart('chart-dms-wo', monthLabels, [{ label:'工单对接 %', data:woMonthData, color:color1, fill:true }]);
+    renderMarketChart('chart-dms-parts', monthLabels, [{ label:'备件对接 %', data:partsMonthData, color:color2, fill:true }]);
+    renderMarketChart('chart-awareness-lms', monthLabels, [{ label:'LMS普及率 %', data:lmsMonthHist, color:color1, fill:true }]);
+    renderMarketChart('chart-awareness-tis', monthLabels, [{ label:'TIS使用率 %', data:tisMonthHist, color:color2, fill:true }]);
+  }, 100);
+}
+
+function renderMarketChart(canvasId, labels, datasets) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  chartInstances[canvasId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(ds => ({
+        label: ds.label, data: ds.data,
+        borderColor: ds.color, backgroundColor: ds.fill ? ds.color+'20' : 'transparent',
+        fill: ds.fill||false, tension: 0.3, pointRadius: 4, pointHoverRadius: 7
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } },
+      scales: { y: { min: 0, max: 100, ticks: { callback: v => v+'%' } } }
+    }
+  });
+}
+
+function cyclePhase(code) {
+  const country = getCountry(code); const phases = ['preparing', 'in-progress', 'completed'];
+  country.phase = phases[(phases.indexOf(country.phase) + 1) % 3];
+  country.lastModified = new Date().toISOString(); saveData(appData);
+  const phaseInfo = PHASES.find(p => p.value === country.phase);
+  const badge = document.getElementById('phase-badge'); badge.className = 'phase-badge ' + country.phase;
+  document.getElementById('phase-label').textContent = phaseInfo.label;
+  updateMapMarker(code); showToast('Phase: ' + phaseInfo.label, 'success');
+}
+
+// ============================================================
+// TODO PANEL
+// ============================================================
+function renderTodoPanel(code, country) {
+  const todos = [];
+
+  // From requirements: not completed
+  (country.requirements || []).forEach(r => {
+    if (r.status !== 'completed') {
+      todos.push({
+        source: '需求池',
+        icon: '☐',
+        title: r.titleZh || r.title,
+        createdAt: r.createdAt,
+        deadline: null,
+        overdue: false
+      });
+    }
+  });
+
+  // From account activations: not activated yet
+  (country.accountActivations || []).forEach(a => {
+    if (!a.activatedAt) {
+      const dl = new Date(a.deadlineAt);
+      const overdue = dl < new Date();
+      todos.push({
+        source: '账号开通',
+        icon: '◷',
+        title: a.accountName,
+        createdAt: a.requestedAt,
+        deadline: a.deadlineAt,
+        overdue
+      });
+    }
+  });
+
+  // From legal sync: delayed projects
+  const legalProjects = country.legalSync.projects || [];
+  legalProjects.forEach(ls => {
+    if (ls.isDelayed) {
+      todos.push({
+        source: '法务同步',
+        icon: '§',
+        title: ls.projectName || '法务项目',
+        createdAt: ls.lastSyncDate || country.lastModified,
+        deadline: ls.nextSyncDate,
+        overdue: true
+      });
+    }
+  });
+
+  const count = todos.length;
+  const countClass = count === 0 ? 'zero' : '';
+
+  const itemsHtml = todos.length === 0
+    ? '<div class="todo-empty">✓ 暂无待办事项</div>'
+    : todos.sort((a,b) => (b.overdue ? 1 : 0) - (a.overdue ? 1 : 0)).map(t => `
+      <div class="todo-item ${t.overdue ? 'overdue' : ''}">
+        <div class="todo-item-icon">${t.icon}</div>
+        <div class="todo-item-body">
+          <div class="todo-item-title">${t.title}</div>
+          <div class="todo-item-meta">
+            <span>· ${t.source}</span>
+            <span>提出: ${formatDate(t.createdAt)}</span>
+            ${t.deadline ? `<span>截止: ${formatDate(t.deadline)}</span>` : ''}
+            ${t.overdue ? '<span style="color:var(--color-risk-red);font-weight:var(--weight-semibold)">⚠ 已超期</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+  return `
+    <div class="todo-popover-wrap">
+      <button class="todo-btn" onclick="toggleTodoPanel(event)" title="待办清单">
+        ☐ 待办 <span class="todo-count ${countClass}">${count}</span>
+      </button>
+      <div class="todo-dropdown" id="todo-dropdown-${code}">
+        <div class="todo-dropdown-header">
+          <span>待办清单</span>
+          <span style="font-size:var(--text-xs);color:var(--color-muted)">${count} items</span>
+        </div>
+        ${itemsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function toggleTodoPanel(e) {
+  e.stopPropagation();
+  const dropdown = e.currentTarget.nextElementSibling;
+  if (!dropdown) return;
+  const wasOpen = dropdown.classList.contains('open');
+  // Close all other open dropdowns first
+  document.querySelectorAll('.todo-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!wasOpen) dropdown.classList.add('open');
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.todo-popover-wrap')) {
+    document.querySelectorAll('.todo-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+
+// ============================================================
+// MODULE 1: CORE METRICS + HISTORY CHART TOGGLE
+// ============================================================
+function renderModuleMetrics(code, country) {
+  const metrics = country.metrics; const score = calcScore(metrics); const level = getRiskLevel(score);
+  const metricDefs = [
+    { key: 'systemIntegration', labelZh: '系统对接完成率', weight: 50 }, { key: 'workOrderCompleteness', labelZh: '工单录入完整率', weight: 30 },
+    { key: 'tisAccountUsage', labelZh: 'TIS账号使用率', weight: 5 }, { key: 'tisQARecords', labelZh: 'APP使用情况', weight: 5 },
+    { key: 'lmsUsage', labelZh: 'LMS系统使用率', weight: 5 }, { key: 'pendingRequirements', labelZh: '待处理需求数量', weight: 5 },
+    { key: 'riskItems', labelZh: '是否有风险项', weight: -10 }
+  ];
+  const rows = metricDefs.map(def => {
+    const data = metrics[def.key];
+    const val = def.key === 'riskItems' ? (data.hasRisks ? 1 : 0) : data.value;
+    const pct = def.key === 'riskItems' ? (data.hasRisks ? 100 : 0) : (def.key === 'pendingRequirements' ? Math.min(100, (val / 10) * 100) : val);
+    const barLevel = def.key === 'riskItems' ? (data.hasRisks ? 'red' : 'green') : (val >= 85 ? 'green' : val >= 60 ? 'yellow' : 'red');
+    const displayVal = def.key === 'riskItems' ? (data.hasRisks ? 'YES ⚠' : 'NO ✓') : (def.key === 'pendingRequirements' ? val : val + '%');
+    const editable = def.key === 'riskItems'
+      ? `<span class="editable-value" onclick="toggleRiskItem('${code}')">${displayVal}</span>`
+      : `<span class="editable-value" onclick="editMetric(this,'${code}','${def.key}')">${displayVal}</span>`;
+    const notesData = def.key === 'riskItems' ? data.description : data.notes;
+    const notesEl = def.key === 'riskItems'
+      ? `<span class="editable-value" style="font-size:var(--text-xs);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="editRiskDesc(this,'${code}')">${notesData || '(click)'}</span>`
+      : `<span class="editable-value" style="font-size:var(--text-xs);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="editMetricNotes(this,'${code}','${def.key}')">${notesData || '(click)'}</span>`;
+    return `<tr><td><div style="font-weight:var(--weight-medium)">${def.labelZh}</div></td><td class="text-center" style="font-weight:var(--weight-semibold);color:var(--color-muted)">${def.weight>0?'+'+def.weight:def.weight}分</td><td style="width:180px"><div class="progress-bar"><div class="progress-bar-fill ${barLevel}" style="width:${pct}%"></div></div></td><td class="text-center">${editable}</td><td>${notesEl}</td></tr>`;
+  }).join('');
+
+  const hist = country.history || [];
+  const chartId = `chart-metrics-${code}`;
+
+  return `
+    <div class="module-section">
+      <div class="module-section-header">
+        <h3>◫ 核心指标评分</h3>
+        <div style="display:flex;align-items:center;gap:var(--space-md)">
+          <span style="font-size:var(--text-sm);color:var(--color-muted)">总分:</span>
+          <span style="font-size:var(--text-xl);font-weight:var(--weight-bold);color:var(--color-${level==='red'?'risk-red':level==='yellow'?'risk-yellow':'risk-green'})">${score}</span>
+          <span class="badge badge-${level}">${getRiskLabel(level)}</span>
+          <button class="btn btn-ghost btn-sm" id="btn-chart-metrics-${code}" onclick="toggleMetricsChart('${code}')">↗ 月度趋势</button>
+        </div>
+      </div>
+      <div class="module-section-body">
+        <div style="overflow-x:auto">
+          <table class="data-table"><thead><tr><th>指标</th><th class="text-center">权重</th><th>进度</th><th class="text-center">数值</th><th>备注</th></tr></thead><tbody>${rows}</tbody></table>
+        </div>
+        <div class="chart-container" id="chart-wrap-metrics-${code}" style="display:none">
+          <canvas id="${chartId}" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleMetricsChart(code) {
+  const wrap = document.getElementById('chart-wrap-metrics-' + code);
+  const btn = document.getElementById('btn-chart-metrics-' + code);
+  if (!wrap) return;
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    if (btn) btn.textContent = '◫ 当前数据';
+    renderMetricsChart(code);
+  } else {
+    wrap.style.display = 'none';
+    if (btn) btn.textContent = '↗ 月度趋势';
+  }
+}
+
+function renderMetricsChart(code) {
+  const country = getCountry(code);
+  const hist = country.history || [];
+  const chartId = 'chart-metrics-' + code;
+  const canvas = document.getElementById(chartId);
+  if (!canvas || hist.length === 0) return;
+  if (chartInstances[chartId]) chartInstances[chartId].destroy();
+
+  const color = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#C25732';
+  chartInstances[chartId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: hist.map(h => formatMonth(h.date)),
+      datasets: [{
+        label: '数字化成熟度总分', data: hist.map(h => h.score),
+        borderColor: color, backgroundColor: color + '20', fill: true, tension: 0.3, pointRadius: 5, pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: true, position: 'top' } },
+      scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '分' } } }
+    }
+  });
+}
+
+// ============================================================
+// MODULE 2: GANTT CHART
+// ============================================================
+function renderModuleGantt(code, country) {
+  const projects = country.gantt.projects || [];
+  const phaseRows = projects.map(proj => {
+    const cells = GANTT_PHASES.map(ph => {
+      const pct = proj[ph.key] || 0;
+      return `<td style="width:22%">
+        <div class="gantt-bar-wrap" title="${ph.label}: ${pct}%&#10;Click to edit" onclick="editGanttPct('${code}','${proj.id}','${ph.key}',${pct})">
+          <div class="gantt-bar-fill ${ph.key.replace('Pct','')}" style="width:${pct}%">${pct > 15 ? pct+'%' : ''}</div>
+        </div>
+      </td>`;
+    }).join('');
+    return `<tr>
+      <td class="gantt-project-name">
+        <strong>${proj.title}</strong>
+        ${proj.notes ? `<div style="font-size:10px;color:var(--color-faint)">${proj.notes}</div>` : ''}
+      </td>
+      ${cells}
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="editGanttProject('${code}','${proj.id}')" title="Edit">✎</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteGanttProject('${code}','${proj.id}')" title="Delete">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="module-section">
+      <div class="module-section-header">
+        <h3>≡ 系统对接进度</h3>
+        <button class="btn btn-primary btn-sm" onclick="addGanttProject('${code}')">+ 添加项目</button>
+      </div>
+      <div class="module-section-body" style="overflow-x:auto">
+        <table class="gantt-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;width:160px">项目名称</th>
+              ${GANTT_PHASES.map(ph => `<th style="width:22%">${ph.label}<br><span class="gantt-phase-header">${ph.labelEn}</span></th>`).join('')}
+              <th style="width:80px">操作</th>
+            </tr>
+          </thead>
+          <tbody>${phaseRows}</tbody>
+        </table>
+        <div style="margin-top:var(--space-sm);font-size:var(--text-xs);color:var(--color-muted)">点击进度条修改百分比 · 每个阶段的百分比独立设置</div>
+      </div>
+    </div>
+  `;
+}
+
+function editGanttPct(code, projId, phaseKey, currentPct) {
+  const newPct = prompt(`Set ${GANTT_PHASES.find(p=>p.key===phaseKey).label} completion percentage (0-100):`, currentPct);
+  if (newPct === null) return;
+  const val = Math.max(0, Math.min(100, parseInt(newPct) || 0));
+  const country = getCountry(code);
+  const proj = country.gantt.projects.find(p => p.id === projId);
+  if (!proj) return;
+  proj[phaseKey] = val;
+  proj.updatedAt = new Date().toISOString();
+  country.lastModified = new Date().toISOString();
+  saveData(appData);
+  handleRoute();
+  showToast('Progress updated', 'success');
+}
+
+function addGanttProject(code) {
+  const title = prompt('Project name:');
+  if (!title) return;
+  const country = getCountry(code);
+  country.gantt.projects.push({
+    id: genId(), title, evaluatPct: 0, integratPct: 0, testPct: 0, livePct: 0,
+    notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  });
+  country.lastModified = new Date().toISOString();
+  saveData(appData);
+  handleRoute();
+  showToast('Project added', 'success');
+}
+
+function editGanttProject(code, projId) {
+  const country = getCountry(code);
+  const proj = country.gantt.projects.find(p => p.id === projId);
+  if (!proj) return;
+  const newTitle = prompt('Edit project name:', proj.title);
+  if (newTitle !== null) {
+    proj.title = newTitle;
+    proj.updatedAt = new Date().toISOString();
+    country.lastModified = new Date().toISOString();
+    saveData(appData);
+    handleRoute();
+    showToast('Project updated', 'success');
+  }
+}
+
+function deleteGanttProject(code, projId) {
+  if (!confirm('Delete this project?')) return;
+  const country = getCountry(code);
+  country.gantt.projects = country.gantt.projects.filter(p => p.id !== projId);
+  country.lastModified = new Date().toISOString();
+  saveData(appData);
+  handleRoute();
+  showToast('Project deleted', 'error');
+}
+
+// ============================================================
+// MODULE 3: WORK ORDER DATA (NEW STRUCTURE)
+// ============================================================
+function renderModuleWorkOrders(code, country) {
+  const wo = country.workOrders;
+  const metrics = [
+    { key: 'weeklyCloseUnder15min', label: '当周关闭<15min', sub: 'Weekly Close <15min', data: wo.weeklyCloseUnder15min },
+    { key: 'abnormalCloseTime', label: '关闭时间异常', sub: 'Abnormal Close Time', data: wo.abnormalCloseTime },
+    { key: 'missingSettlementTime', label: '缺少结算时间', sub: 'Missing Settlement Time', data: wo.missingSettlementTime },
+    { key: 'maintenance24hCloseRate', label: '保养24H关闭率', sub: 'Maintenance 24H Close Rate', data: wo.maintenance24hCloseRate }
+  ];
+
+  const cards = metrics.map(m => `
+    <div class="stat-card">
+      <div class="stat-card-label">${m.label}<span class="sub">${m.sub}</span></div>
+      <div class="stat-card-value">
+        <span class="editable-value" onclick="editWOField(this,'${code}','${m.key}','value')">${m.data.value}%</span>
+        <span class="frac">(${m.data.value*m.data.total/100|0}/${m.data.total})</span>
+      </div>
+    </div>
+  `).join('');
+
+  // Type breakdown
+  const tb = wo.typeBreakdown || [];
+  let totalCount = tb.reduce((s,t)=>s+t.count, 0);
+  let totalQualified = tb.reduce((s,t)=>s+t.qualified, 0);
+  const tbRows = tb.map(t => {
+    const rate = t.count > 0 ? Math.round(t.qualified / t.count * 100) : 0;
+    return `<tr><td>${t.type}</td><td class="text-center">${t.count}</td><td class="text-center">${t.qualified}</td><td class="text-center">${t.count-t.qualified}</td><td class="text-center"><span class="badge ${rate>=85?'badge-green':rate>=60?'badge-yellow':'badge-red'}">${rate}%</span></td></tr>`;
+  }).join('');
+
+  const chartId = `chart-wo-${code}`;
+
+  return `
+    <div class="module-section">
+      <div class="module-section-header">
+        <h3>↗ 工单数据</h3>
+        <button class="btn btn-ghost btn-sm" id="btn-chart-wo-${code}" onclick="toggleWOChart('${code}')">↗ 月度合格率趋势</button>
+      </div>
+      <div class="module-section-body">
+        <div class="stat-grid">${cards}</div>
+        <div style="margin-top:var(--space-xl)">
+          <h4 style="margin-bottom:var(--space-md)">工单类型结构 / Type Breakdown</h4>
+          <table class="data-table">
+            <thead><tr><th>类型 / Type</th><th class="text-center">总数 / Total</th><th class="text-center">合格 / Qualified</th><th class="text-center">不合格 / Failed</th><th class="text-center">合格率 / Rate</th></tr></thead>
+            <tbody>
+              ${tbRows}
+              <tr style="font-weight:var(--weight-semibold);background:var(--color-surface)">
+                <td>合计 / Total</td><td class="text-center">${totalCount}</td><td class="text-center">${totalQualified}</td><td class="text-center">${totalCount-totalQualified}</td>
+                <td class="text-center"><span class="editable-value" onclick="editWOField(this,'${code}','totalQualifiedRate','value')">${wo.totalQualifiedRate}%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="chart-container" id="chart-wrap-wo-${code}" style="display:none;margin-top:var(--space-lg)">
+          <canvas id="${chartId}" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function editWOField(el, code, key, field) {
+  const country = getCountry(code);
+  const currentVal = key === 'totalQualifiedRate' ? country.workOrders.totalQualifiedRate : country.workOrders[key][field];
+  const input = document.createElement('input'); input.type = 'number'; input.className = 'editable-input';
+  input.value = currentVal; input.min = 0; input.max = 100;
+  el.replaceWith(input); input.focus(); input.select();
+  const commit = () => {
+    let val = parseFloat(input.value); if (isNaN(val)) val = 0; val = Math.max(0, Math.min(100, val));
+    if (key === 'totalQualifiedRate') country.workOrders.totalQualifiedRate = val;
+    else country.workOrders[key][field] = val;
+    country.lastModified = new Date().toISOString(); saveData(appData); handleRoute();
+    showToast('Updated', 'success');
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') input.replaceWith(el); });
+}
+
+function toggleWOChart(code) {
+  const wrap = document.getElementById('chart-wrap-wo-' + code);
+  const btn = document.getElementById('btn-chart-wo-' + code);
+  if (!wrap) return;
+  if (wrap.style.display === 'none') { wrap.style.display = 'block'; if(btn) btn.textContent = '◫ 当前数据'; renderWOChart(code); }
+  else { wrap.style.display = 'none'; if(btn) btn.textContent = '↗ 月度合格率趋势'; }
+}
+
+function renderWOChart(code) {
+  const country = getCountry(code); const hist = country.workOrderHistory || [];
+  const chartId = 'chart-wo-' + code; const canvas = document.getElementById(chartId);
+  if (!canvas || hist.length === 0) return;
+  if (chartInstances[chartId]) chartInstances[chartId].destroy();
+  const color = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#C25732';
+  chartInstances[chartId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: hist.map(h => formatMonth(h.date)),
+      datasets: [
+        { label: '总合格率', data: hist.map(h => h.totalQualified), borderColor: color, tension: 0.3, pointRadius: 4 },
+        { label: '保养24H关闭率', data: hist.map(h => h.maintenance24hClose), borderColor: '#40A060', tension: 0.3, pointRadius: 4 },
+        { label: '<15min关闭率', data: hist.map(h => h.closeUnder15min), borderColor: '#5BA0B0', tension: 0.3, pointRadius: 4 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { min: 0, max: 100, ticks: { callback: v => v+'%' } } } }
+  });
+}
+
+// ============================================================
+// MODULE 4: TIS & LMS (WITH CHARTS)
+// ============================================================
+function renderModuleTISLMS(code, country) {
+  const tis = country.tisUsage;
+  const lms = country.lmsUsage;
+  const tisChartId = `chart-tis-${code}`;
+  const lmsChartId = `chart-lms-${code}`;
+
+  return `
+    <div class="module-section">
+      <div class="module-section-header"><h3>◉ TIS & LMS 系统使用情况</h3></div>
+      <div class="module-section-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-xl)">
+          <div>
+            <h4 style="margin-bottom:var(--space-md)">TIS 系统
+              <button class="btn btn-ghost btn-sm" id="btn-chart-tis-${code}" onclick="toggleTISChart('${code}')" style="margin-left:8px">↗ 趋势</button>
+            </h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-bottom:var(--space-lg)">
+              <div class="stat-card">
+                <div class="stat-card-label">账号使用率</div>
+                <div class="stat-card-value"><span class="editable-value" onclick="editTISLMS(this,'${code}','tis','accountUsageRate')">${tis.accountUsageRate}%</span></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-label">月度问答数量</div>
+                <div class="stat-card-value"><span class="editable-value" onclick="editTISLMS(this,'${code}','tis','monthlyQA')">${tis.monthlyQA}</span></div>
+              </div>
+            </div>
+            <div class="chart-container" id="chart-wrap-tis-${code}" style="display:none"><canvas id="${tisChartId}" height="200"></canvas></div>
+          </div>
+          <div>
+            <h4 style="margin-bottom:var(--space-md)">LMS 系统
+              <button class="btn btn-ghost btn-sm" id="btn-chart-lms-${code}" onclick="toggleLMSChart('${code}')" style="margin-left:8px">↗ 趋势</button>
+            </h4>
+            <div style="margin-bottom:var(--space-lg)">
+              <div class="stat-card">
+                <div class="stat-card-label">账号激活率</div>
+                <div class="stat-card-value"><span class="editable-value" onclick="editTISLMS(this,'${code}','lms','accountActivationRate')">${lms.accountActivationRate}%</span></div>
+                <div class="progress-bar" style="margin-top:8px"><div class="progress-bar-fill ${lms.accountActivationRate>=85?'green':lms.accountActivationRate>=60?'yellow':'red'}" style="width:${lms.accountActivationRate}%"></div></div>
+              </div>
+            </div>
+            <div class="chart-container" id="chart-wrap-lms-${code}" style="display:none"><canvas id="${lmsChartId}" height="200"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function editTISLMS(el, code, system, field) {
+  const country = getCountry(code);
+  const currentVal = country[system + 'Usage'][field];
+  const input = document.createElement('input'); input.type = 'number'; input.className = 'editable-input';
+  input.value = currentVal; input.min = 0; input.max = field === 'monthlyQA' ? 9999 : 100;
+  el.replaceWith(input); input.focus(); input.select();
+  const commit = () => {
+    let val = parseInt(input.value); if (isNaN(val)) val = 0;
+    val = field === 'monthlyQA' ? Math.max(0, val) : Math.max(0, Math.min(100, val));
+    country[system + 'Usage'][field] = val;
+    country.lastModified = new Date().toISOString(); saveData(appData); handleRoute();
+    showToast('Updated', 'success');
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') input.replaceWith(el); });
+}
+
+function toggleTISChart(code) {
+  const wrap = document.getElementById('chart-wrap-tis-' + code);
+  const btn = document.getElementById('btn-chart-tis-' + code);
+  if (!wrap) return;
+  if (wrap.style.display === 'none') { wrap.style.display = 'block'; if(btn) btn.textContent = '— 隐藏'; renderTISChart(code); }
+  else { wrap.style.display = 'none'; if(btn) btn.textContent = '↗ 趋势'; }
+}
+
+function renderTISChart(code) {
+  const country = getCountry(code); const hist = country.history || [];
+  const chartId = 'chart-tis-' + code; const canvas = document.getElementById(chartId);
+  if (!canvas || hist.length === 0) return;
+  if (chartInstances[chartId]) chartInstances[chartId].destroy();
+  chartInstances[chartId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: hist.map(h => formatMonth(h.date)),
+      datasets: [
+        { label: 'TIS账号使用率', data: hist.map(h => h.tisAccountUsage), borderColor: '#C25732', tension: 0.3, pointRadius: 4 },
+        { label: 'APP使用情况', data: hist.map(h => h.tisQARecords), borderColor: '#5BA0B0', tension: 0.3, pointRadius: 4 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } } }
+  });
+}
+
+function toggleLMSChart(code) {
+  const wrap = document.getElementById('chart-wrap-lms-' + code);
+  const btn = document.getElementById('btn-chart-lms-' + code);
+  if (!wrap) return;
+  if (wrap.style.display === 'none') { wrap.style.display = 'block'; if(btn) btn.textContent = '— 隐藏'; renderLMSChart(code); }
+  else { wrap.style.display = 'none'; if(btn) btn.textContent = '↗ 趋势'; }
+}
+
+function renderLMSChart(code) {
+  const country = getCountry(code); const hist = country.history || [];
+  const chartId = 'chart-lms-' + code; const canvas = document.getElementById(chartId);
+  if (!canvas || hist.length === 0) return;
+  if (chartInstances[chartId]) chartInstances[chartId].destroy();
+  chartInstances[chartId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: hist.map(h => formatMonth(h.date)),
+      datasets: [
+        { label: 'LMS使用率', data: hist.map(h => h.lmsUsage), borderColor: '#40A060', tension: 0.3, pointRadius: 4, fill: true, backgroundColor: '#40A06020' }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } } }
+  });
+}
+
+// ============================================================
+// MODULE 5: REQUIREMENTS POOL
+// ============================================================
+function renderModuleRequirements(code, country) {
+  const reqs = country.requirements || [];
+  const rows = reqs.map(r => `
+    <tr>
+      <td><strong>${r.titleZh || r.title}</strong></td>
+      <td><span class="editable-value" onclick="editReqStatus(this,'${code}','${r.id}')"><span class="badge ${r.status==='completed'?'badge-green':r.status==='in-progress'?'badge-yellow':'badge-neutral'}">${r.statusZh||r.status}</span></span></td>
+      <td><span class="editable-value" onclick="editReqOwner(this,'${code}','${r.id}')">${r.owner||'(set)'}</span></td>
+      <td><span class="editable-value" style="font-size:var(--text-xs);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="editReqNotes(this,'${code}','${r.id}')">${r.notes||'+'}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteRequirement('${code}','${r.id}')">✕</button></td>
+    </tr>
+  `).join('');
+  return `
+    <div class="module-section">
+      <div class="module-section-header"><h3>☐ 需求池</h3><button class="btn btn-primary btn-sm" onclick="addRequirement('${code}')">+ Add</button></div>
+      <div class="module-section-body"><table class="data-table"><thead><tr><th>Title</th><th>Status</th><th>Owner</th><th>Notes</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="color:var(--color-faint);text-align:center">No requirements</td></tr>'}</tbody></table></div>
+    </div>`;
+}
+
+function addRequirement(code) { const titleZh=prompt('Requirement title:'); if(!titleZh)return; const country=getCountry(code); country.requirements.push({id:genId(),title:titleZh,titleZh,status:'pending',statusZh:'待处理',owner:'',domesticScheduleUrl:'',notes:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute(); showToast('Requirement added','success'); }
+function editReqStatus(el,code,reqId) { const country=getCountry(code); const req=country.requirements.find(r=>r.id===reqId); if(!req)return; const statuses=[{value:'pending',label:'待处理'},{value:'in-progress',label:'进行中'},{value:'review',label:'评审中'},{value:'completed',label:'已完成'}]; const select=document.createElement('select'); select.className='editable-select'; select.innerHTML=statuses.map(s=>`<option value="${s.value}"${req.status===s.value?' selected':''}>${s.label}</option>`).join(''); el.replaceWith(select); select.focus(); const commit=()=>{const chosen=statuses.find(s=>s.value===select.value); req.status=chosen.value; req.statusZh=chosen.label; req.updatedAt=new Date().toISOString(); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute();}; select.addEventListener('blur',commit); select.addEventListener('change',commit); }
+function editReqOwner(el,code,reqId) { const country=getCountry(code); const req=country.requirements.find(r=>r.id===reqId); if(!req)return; const input=document.createElement('input'); input.type='text'; input.className='editable-input'; input.value=req.owner||''; el.replaceWith(input); input.focus(); const commit=()=>{req.owner=input.value; req.updatedAt=new Date().toISOString(); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute();}; input.addEventListener('blur',commit); input.addEventListener('keydown',e=>{if(e.key==='Enter')input.blur();if(e.key==='Escape')input.replaceWith(el);}); }
+function editReqLink(el,code,reqId) { const country=getCountry(code); const req=country.requirements.find(r=>r.id===reqId); if(!req)return; const input=document.createElement('input'); input.type='url'; input.className='editable-input wide'; input.value=req.domesticScheduleUrl||''; el.replaceWith(input); input.focus(); const commit=()=>{req.domesticScheduleUrl=input.value; req.updatedAt=new Date().toISOString(); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute();}; input.addEventListener('blur',commit); input.addEventListener('keydown',e=>{if(e.key==='Enter')input.blur();if(e.key==='Escape')input.replaceWith(el);}); }
+function editReqNotes(el,code,reqId) { const country=getCountry(code); const req=country.requirements.find(r=>r.id===reqId); if(!req)return; const input=document.createElement('input'); input.type='text'; input.className='editable-input wide'; input.value=req.notes||''; el.replaceWith(input); input.focus(); const commit=()=>{req.notes=input.value; req.updatedAt=new Date().toISOString(); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute();}; input.addEventListener('blur',commit); input.addEventListener('keydown',e=>{if(e.key==='Enter')input.blur();if(e.key==='Escape')input.replaceWith(el);}); }
+function deleteRequirement(code,reqId) { if(!confirm('Delete?'))return; const country=getCountry(code); country.requirements=country.requirements.filter(r=>r.id!==reqId); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute(); showToast('Deleted','error'); }
+
+// ============================================================
+// MODULE 1 HELPERS (Metris edit)
+// ============================================================
+function editMetric(el, code, metricKey) {
+  const country = getCountry(code); const data = country.metrics[metricKey];
+  const currentVal = metricKey === 'pendingRequirements' ? data.value : data.value;
+  const input = document.createElement('input'); input.type = 'number'; input.className = 'editable-input';
+  input.value = currentVal; input.min = 0; input.max = metricKey === 'pendingRequirements' ? 99 : 100;
+  el.replaceWith(input); input.focus(); input.select();
+  const commit = () => {
+    let val = parseInt(input.value); if (isNaN(val)) val = 0;
+    if (metricKey === 'pendingRequirements') val = Math.max(0, val);
+    else val = Math.max(0, Math.min(100, val));
+    data.value = val; country.lastModified = new Date().toISOString();
+    saveData(appData); updateMapMarker(code); handleRoute();
+    showToast('Metric updated', 'success');
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') input.replaceWith(el); });
+}
+function editMetricNotes(el, code, metricKey) {
+  const country = getCountry(code); const current = country.metrics[metricKey].notes || '';
+  const input = document.createElement('input'); input.type = 'text'; input.className = 'editable-input wide'; input.value = current;
+  el.replaceWith(input); input.focus();
+  const commit = () => { country.metrics[metricKey].notes = input.value; country.lastModified = new Date().toISOString(); saveData(appData); handleRoute(); };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') input.replaceWith(el); });
+}
+function toggleRiskItem(code) {
+  const country = getCountry(code); country.metrics.riskItems.hasRisks = !country.metrics.riskItems.hasRisks;
+  country.lastModified = new Date().toISOString(); saveData(appData); updateMapMarker(code); handleRoute();
+  showToast(country.metrics.riskItems.hasRisks ? 'Risk flagged' : 'Risk cleared', 'success');
+}
+function editRiskDesc(el, code) {
+  const country = getCountry(code); const current = country.metrics.riskItems.description || '';
+  const input = document.createElement('input'); input.type = 'text'; input.className = 'editable-input wide'; input.value = current;
+  el.replaceWith(input); input.focus();
+  const commit = () => { country.metrics.riskItems.description = input.value; country.lastModified = new Date().toISOString(); saveData(appData); handleRoute(); };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') input.replaceWith(el); });
+}
+
+// ============================================================
+// MODULE 6: ACCOUNT ACTIVATION TRACKING
+// ============================================================
+function renderModuleAccounts(code, country) {
+  const accs = country.accountActivations || [];
+  const rows = accs.map(a => {
+    const isActive = !!a.activatedAt; const deadline = new Date(a.deadlineAt).getTime();
+    const now = Date.now(); const isOverdue = !isActive && now >= deadline;
+    return `<tr>
+      <td><strong>${a.accountName}</strong></td>
+      <td>${formatDate(a.requestedAt)}</td><td>${formatDate(a.deadlineAt)}</td>
+      <td><span class="countdown ${isActive?'activated':isOverdue?'overdue':''}" data-deadline="${a.deadlineAt}" data-activated="${a.activatedAt||''}" id="countdown-${a.id}">${isActive?'✓ Activated':isOverdue?'⚠ Overdue!':'...'}</span></td>
+      <td>${isActive?'<span class="badge badge-green">Activated</span>':(isOverdue?'<span class="badge badge-red">Overdue!</span>':'<span class="badge badge-yellow">Pending</span>')}</td>
+      <td><span class="editable-value" style="font-size:var(--text-xs)" onclick="editAccNotes(this,'${code}','${a.id}')">${a.notes||'+'}</span></td>
+      <td>${!isActive?`<button class="btn btn-secondary btn-sm" onclick="markActivated('${code}','${a.id}')">✓ Activate</button>`:''}<button class="btn btn-danger btn-sm" onclick="deleteAccount('${code}','${a.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="module-section">
+      <div class="module-section-header"><h3>◷ 账号开通追踪</h3><button class="btn btn-primary btn-sm" onclick="addAccount('${code}')">+ Add</button></div>
+      <div class="module-section-body"><table class="data-table"><thead><tr><th>Account</th><th>Requested</th><th>Deadline</th><th>Countdown</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7" style="color:var(--color-faint);text-align:center">No accounts</td></tr>'}</tbody></table></div>
+    </div>`;
+}
+
+function startCountdowns() {
+  document.querySelectorAll('.countdown').forEach(el => {
+    const deadline = el.dataset.deadline, activated = el.dataset.activated;
+    if (!deadline || activated) return;
+    const update = () => {
+      const now = Date.now(), dl = new Date(deadline).getTime(), remaining = Math.max(0, dl - now);
+      if (remaining <= 0) { el.textContent = '⚠ Overdue!'; el.className = 'countdown overdue'; return; }
+      const h = Math.floor(remaining/3600000), m = Math.floor((remaining%3600000)/60000), s = Math.floor((remaining%60000)/1000);
+      el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      if (h < 6) el.className = 'countdown overdue'; else if (h < 12) el.className = 'countdown';
+    };
+    update(); const timerId = setInterval(update, 1000); activeCountdowns.push(timerId);
+  });
+}
+function addAccount(code) { const name=prompt('Account name:'); if(!name)return; const country=getCountry(code); const now=new Date(); country.accountActivations.push({id:genId(),accountName:name,requestedAt:now.toISOString(),deadlineAt:new Date(now.getTime()+48*3600000).toISOString(),activatedAt:null,notes:''}); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute(); showToast('Account added','success'); }
+function markActivated(code,accId) { const country=getCountry(code); const acc=country.accountActivations.find(a=>a.id===accId); if(!acc)return; acc.activatedAt=new Date().toISOString(); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute(); showToast('Activated','success'); }
+function editAccNotes(el,code,accId) { const country=getCountry(code); const acc=country.accountActivations.find(a=>a.id===accId); if(!acc)return; const input=document.createElement('input'); input.type='text'; input.className='editable-input wide'; input.value=acc.notes||''; el.replaceWith(input); input.focus(); const commit=()=>{acc.notes=input.value;country.lastModified=new Date().toISOString();saveData(appData);handleRoute();}; input.addEventListener('blur',commit); input.addEventListener('keydown',e=>{if(e.key==='Enter')input.blur();if(e.key==='Escape')input.replaceWith(el);}); }
+function deleteAccount(code,accId) { if(!confirm('Delete?'))return; const country=getCountry(code); country.accountActivations=country.accountActivations.filter(a=>a.id!==accId); country.lastModified=new Date().toISOString(); saveData(appData); handleRoute(); showToast('Deleted','error'); }
+
+// ============================================================
+// MODULE 7: LEGAL / DEV SYNC (WITH PROJECT NAME)
+// ============================================================
+function renderModuleLegalSync(code, country) {
+  const projects = country.legalSync.projects || [];
+  const bars = projects.map((ls, i) => {
+    const delayed = ls.isDelayed;
+    return `<div class="legal-sync-bar ${delayed?'delayed':''}" style="margin-bottom:${i<projects.length-1?'var(--space-md)':'0'}">
+      <div class="legal-sync-item" style="min-width:160px">
+        <span class="legal-sync-label">项目名称</span>
+        <span class="legal-sync-value"><span class="editable-value" onclick="editLegalProjField(this,'${code}','${ls.id}','projectName')">${ls.projectName||'(set)'}</span></span>
+      </div>
+      <div class="legal-sync-item">
+        <span class="legal-sync-label">状态</span>
+        <span class="legal-sync-value"><span class="editable-value" onclick="editLegalProjStatus(this,'${code}','${ls.id}')"><span class="badge ${delayed?'badge-red':'badge-green'}">${ls.statusZh||ls.status||'Normal'}</span></span></span>
+      </div>
+      <div class="legal-sync-item"><span class="legal-sync-label">上次同步</span><span class="legal-sync-value"><span class="editable-value" onclick="editLegalProjDate(this,'${code}','${ls.id}','lastSyncDate')">${ls.lastSyncDate?formatDate(ls.lastSyncDate):'(set)'}</span></span></div>
+      <div class="legal-sync-item"><span class="legal-sync-label">下次同步</span><span class="legal-sync-value"><span class="editable-value" onclick="editLegalProjDate(this,'${code}','${ls.id}','nextSyncDate')">${ls.nextSyncDate?formatDate(ls.nextSyncDate):'(set)'}</span></span></div>
+      <div class="legal-sync-item"><span class="legal-sync-label">联系人</span><span class="legal-sync-value"><span class="editable-value" onclick="editLegalProjField(this,'${code}','${ls.id}','contactPerson')">${ls.contactPerson||'(set)'}</span><span style="font-size:var(--text-xs);color:var(--color-muted)">${ls.contactEmail||''}</span></span></div>
+      <div class="legal-sync-item" style="flex:1;min-width:160px"><span class="legal-sync-label">备注</span><span class="legal-sync-value"><span class="editable-value" onclick="editLegalProjField(this,'${code}','${ls.id}','notes')">${ls.notes||'+'}</span></span></div>
+    </div>${delayed?'<div style="margin-top:var(--space-sm);padding:var(--space-xs) var(--space-md);background:var(--color-risk-red-bg);border-radius:var(--radius-sm);font-size:var(--text-xs);color:var(--color-risk-red);font-weight:var(--weight-semibold)">⚠ 延迟预警 — 请立即跟进</div>':''}`;
+  }).join('');
+
+  return `
+    <div class="module-section">
+      <div class="module-section-header"><h3>§ 法务/开发同步</h3></div>
+      <div class="module-section-body">${bars||'<div style="color:var(--color-faint);font-size:var(--text-sm)">暂无项目</div>'}</div>
+    </div>`;
+}
+
+function getLegalProj(code, projId) {
+  const country = getCountry(code);
+  const projects = country.legalSync.projects || [];
+  return projects.find(p => p.id === projId);
+}
+
+function editLegalProjStatus(el, code, projId) {
+  const proj = getLegalProj(code, projId); if (!proj) return;
+  const statuses = [{value:'normal',label:'正常'},{value:'delayed',label:'延迟'},{value:'completed',label:'已完成'}];
+  const select = document.createElement('select'); select.className = 'editable-select';
+  select.innerHTML = statuses.map(s => `<option value="${s.value}"${proj.status===s.value?' selected':''}>${s.label}</option>`).join('');
+  el.replaceWith(select); select.focus();
+  const commit = () => { const chosen = statuses.find(s=>s.value===select.value); proj.status=chosen.value; proj.statusZh=chosen.label; proj.isDelayed=chosen.value==='delayed'; getCountry(code).lastModified=new Date().toISOString(); saveData(appData); handleRoute(); };
+  select.addEventListener('blur', commit); select.addEventListener('change', commit);
+}
+
+function editLegalProjDate(el, code, projId, field) {
+  const proj = getLegalProj(code, projId); if (!proj) return;
+  const input = document.createElement('input'); input.type = 'date'; input.className = 'editable-input';
+  input.value = proj[field] ? proj[field].slice(0,10) : '';
+  el.replaceWith(input); input.focus();
+  const commit = () => { proj[field] = input.value ? new Date(input.value).toISOString() : ''; getCountry(code).lastModified=new Date().toISOString(); saveData(appData); handleRoute(); };
+  input.addEventListener('blur', commit); input.addEventListener('change', commit);
+}
+
+function editLegalProjField(el, code, projId, field) {
+  const proj = getLegalProj(code, projId); if (!proj) return;
+  const input = document.createElement('input'); input.type = 'text'; input.className = 'editable-input wide';
+  input.value = proj[field] || ''; el.replaceWith(input); input.focus();
+  const commit = () => { proj[field] = input.value; getCountry(code).lastModified = new Date().toISOString(); saveData(appData); handleRoute(); };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') input.replaceWith(el); });
+}
+
+// ============================================================
+// EXCEL EXPORT
+// ============================================================
+function exportCountry(code) {
+  const country = getCountry(code); const score = calcScore(country.metrics); const wb = XLSX.utils.book_new();
+
+  const metricRows = [
+    { '指标': '系统对接完成率', '权重': 50, '当前': country.metrics.systemIntegration.value+'%', '备注': country.metrics.systemIntegration.notes||'' },
+    { '指标': '工单录入完整率', '权重': 30, '当前': country.metrics.workOrderCompleteness.value+'%', '备注': country.metrics.workOrderCompleteness.notes||'' },
+    { '指标': 'TIS账号使用率', '权重': 5, '当前': country.metrics.tisAccountUsage.value+'%', '备注': country.metrics.tisAccountUsage.notes||'' },
+    { '指标': 'APP使用情况', '权重': 5, '当前': country.metrics.tisQARecords.value+'%', '备注': country.metrics.tisQARecords.notes||'' },
+    { '指标': 'LMS系统使用率', '权重': 5, '当前': country.metrics.lmsUsage.value+'%', '备注': country.metrics.lmsUsage.notes||'' },
+    { '指标': '待处理需求数量', '权重': 5, '当前': country.metrics.pendingRequirements.value, '备注': country.metrics.pendingRequirements.notes||'' },
+    { '指标': '风险项', '权重': -10, '当前': country.metrics.riskItems.hasRisks?'YES':'NO', '备注': country.metrics.riskItems.description||'' },
+    { '指标': '总分', '权重': '', '当前': score, '备注': getRiskLabel(getRiskLevel(score)) }
+  ];
+  addSheet(wb, metricRows, 'Core Metrics');
+
+  const ganttRows = (country.gantt.projects||[]).map(p => ({
+    '项目': p.title, '评估中': p.evaluatPct+'%', '对接中': p.integratPct+'%', '测试中': p.testPct+'%', '已上线': p.livePct+'%', '备注': p.notes||''
+  }));
+  addSheet(wb, ganttRows, 'Gantt');
+
+  const wo = country.workOrders;
+  addSheet(wb, [
+    { '指标': '当周关闭<15min', '数值': wo.weeklyCloseUnder15min.value+'%', '总数': wo.weeklyCloseUnder15min.total, '环比': formatPct(wo.momChange.weeklyCloseUnder15min) },
+    { '指标': '关闭时间异常', '数值': wo.abnormalCloseTime.value+'%', '总数': wo.abnormalCloseTime.total, '环比': formatPct(wo.momChange.abnormalCloseTime) },
+    { '指标': '缺少结算时间', '数值': wo.missingSettlementTime.value+'%', '总数': wo.missingSettlementTime.total, '环比': formatPct(wo.momChange.missingSettlementTime) },
+    { '指标': '保养24H关闭率', '数值': wo.maintenance24hCloseRate.value+'%', '总数': wo.maintenance24hCloseRate.total, '环比': formatPct(wo.momChange.maintenance24hCloseRate) },
+    { '指标': '总合格率', '数值': wo.totalQualifiedRate+'%', '总数': '', '环比': formatPct(wo.momChange.totalQualifiedRate) }
+  ], 'Work Orders');
+
+  const tbRows = (wo.typeBreakdown||[]).map(t => ({ '类型': t.type, '总数': t.count, '合格': t.qualified, '不合格': t.count-t.qualified, '合格率': t.count>0?Math.round(t.qualified/t.count*100)+'%':'0%' }));
+  addSheet(wb, tbRows, 'Type Breakdown');
+
+  addSheet(wb, [{ 'TIS账号使用率': country.tisUsage.accountUsageRate+'%', 'TIS月度问答': country.tisUsage.monthlyQA, 'LMS账号激活率': country.lmsUsage.accountActivationRate+'%' }], 'TIS LMS');
+  addSheet(wb, (country.requirements||[]).map(r=>({ '标题': r.titleZh||r.title, '状态': r.statusZh||r.status, '负责人': r.owner||'', '排期链接': r.domesticScheduleUrl||'', '备注': r.notes||'' })), 'Requirements');
+  addSheet(wb, (country.accountActivations||[]).map(a=>({ '账号': a.accountName, '申请时间': formatDate(a.requestedAt), '截止': formatDate(a.deadlineAt), '开通': a.activatedAt?formatDate(a.activatedAt):'NOT YET', '备注': a.notes||'' })), 'Account Activations');
+  const legalRows = (country.legalSync.projects||[]).map(p => ({ '项目名称': p.projectName||'', '状态': p.statusZh||p.status, '上次同步': formatDate(p.lastSyncDate), '下次同步': formatDate(p.nextSyncDate), '延迟': p.isDelayed?'YES':'No', '联系人': p.contactPerson||'', '邮箱': p.contactEmail||'', '备注': p.notes||'' }));
+  addSheet(wb, legalRows, 'Legal Sync');
+
+  XLSX.writeFile(wb, `${country.name}_数据_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Exported!', 'success');
+}
+
+function addSheet(wb, rows, name) {
+  if (!rows||rows.length===0) { XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['No data']]), name); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const widths = Object.keys(rows[0]).map(k => ({ wch: Math.max(k.length, ...rows.map(r=>String(r[k]||'').length)) + 2 }));
+  ws['!cols'] = widths;
+  XLSX.utils.book_append_sheet(wb, ws, name);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+function showLogin() {
+  const overlay = document.createElement('div');
+  overlay.className = 'auth-modal-overlay'; overlay.id = 'auth-overlay';
+  overlay.innerHTML = `
+    <div class="auth-modal">
+      <h2>登录</h2>
+      <p>输入邮箱和密码访问数据中心</p>
+      <div class="auth-error" id="auth-error"></div>
+      <input class="auth-input" type="email" id="auth-email" placeholder="Email">
+      <input class="auth-input" type="password" id="auth-password" placeholder="Password">
+      <button class="auth-btn primary" id="auth-submit">登录</button>
+      <button class="auth-btn ghost" id="auth-toggle">没有账号？注册</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  let mode = 'login';
+
+  document.getElementById('auth-submit').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    errEl.style.display = 'none';
+    if (!email || !password) { errEl.textContent = '请填写邮箱和密码'; errEl.style.display = 'block'; return; }
+
+    try {
+      if (mode === 'login') {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        currentUser = data.user;
+        onLoginSuccess();
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.user) {
+          currentUser = data.user;
+          errEl.textContent = '注册成功！请检查邮箱验证链接。';
+          errEl.style.color = 'var(--color-risk-green)';
+          errEl.style.display = 'block';
+          setTimeout(() => onLoginSuccess(), 1500);
+        }
+      }
+    } catch(err) {
+      errEl.textContent = err.message || '认证失败';
+      errEl.style.display = 'block';
+    }
+  });
+
+  document.getElementById('auth-toggle').addEventListener('click', () => {
+    mode = mode === 'login' ? 'signup' : 'login';
+    document.getElementById('auth-submit').textContent = mode === 'login' ? '登录' : '注册';
+    document.getElementById('auth-toggle').textContent = mode === 'login' ? '没有账号？注册' : '已有账号？登录';
+    document.querySelector('.auth-modal h2').textContent = mode === 'login' ? '登录' : '注册';
+  });
+
+  document.getElementById('auth-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('auth-submit').click();
+  });
+}
+
+function onLoginSuccess() {
+  const overlay = document.getElementById('auth-overlay');
+  if (overlay) overlay.remove();
+  updateUserUI();
+  subscribeToChanges();
+  handleRoute();
+  showToast('已连接到云端', 'success');
+}
+
+function showLogout() {
+  document.getElementById('auth-overlay')?.remove();
+  currentUser = null;
+  if (realtimeChannel) { sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+  supabaseEnabled = false;
+  updateSyncDot('offline');
+  updateUserUI();
+  handleRoute();
+  showToast('已切换到离线模式', 'success');
+}
+
+function updateUserUI() {
+  const el = document.getElementById('header-user');
+  if (!el) return;
+  if (currentUser) {
+    const initial = (currentUser.email||'?')[0].toUpperCase();
+    el.innerHTML = `<span class="header-user-avatar">${initial}</span> <span>${currentUser.email}</span> <button class="header-user-btn" onclick="showLogout()">退出</button>`;
+  } else if (supabaseEnabled) {
+    el.innerHTML = `<button class="header-user-btn" onclick="showLogin()">登录</button>`;
+  } else {
+    el.innerHTML = `<span style="font-size:10px;color:var(--color-faint)">离线模式</span>`;
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  console.log('App init');
+  try {
+    initSupabase();
+
+    // Check for existing Supabase session
+    if (supabaseEnabled && supabase) {
+      const { data } = await sb.auth.getSession();
+      if (data && data.session) {
+        currentUser = data.session.user;
+        console.log('Existing session found:', currentUser.email);
+      }
+    }
+
+    appData = await initData();
+    console.log('Data ready. Countries:', Object.keys(appData.countries).length);
+    updateUserUI();
+
+    if (currentUser && supabaseEnabled) {
+      subscribeToChanges();
+    }
+
+    window.addEventListener('hashchange', function(e) {
+      console.log('hashchange:', (e.oldURL||'').split('#')[1], '→', (e.newURL||'').split('#')[1]);
+      handleRoute();
+    });
+    handleRoute();
+    console.log('Map markers:', Object.keys(mapMarkers).length);
+  } catch(err) {
+    console.error('Init error:', err);
+    document.body.innerHTML += `<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid red;padding:30px;border-radius:12px;z-index:99999"><h2 style="color:red">Error</h2><pre>${err.message}\n${err.stack}</pre></div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
