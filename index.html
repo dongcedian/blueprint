@@ -287,6 +287,23 @@ a:hover { color: var(--color-primary-hover); }
 .sync-dot.syncing { background: var(--color-risk-yellow); animation: pulse 1s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+/* Readonly mode (not logged in) */
+body.readonly .editable-value { cursor: default; pointer-events: none; }
+body.readonly .editable-value::after { display: none; }
+body.readonly .btn-primary,
+body.readonly .btn-danger,
+body.readonly .btn-icon { display: none; }
+body.readonly .btn-ghost { display: none; }
+/* Keep export and chart toggle buttons visible */
+body.readonly .btn-secondary,
+body.readonly .btn-ghost.chart-btn { display: inline-flex; }
+/* Hide add/delete but keep chart toggle */
+.module-section-header .btn-primary { display: none; }
+body.readonly .module-section-header .btn-primary { display: none; }
+body.readonly .module-section-header .btn-ghost { display: inline-flex; }
+/* Phase cycle */
+body.readonly .phase-badge span[onclick] { pointer-events: none; }
+
 @media (max-width: 768px) {
   .stat-grid { grid-template-columns: 1fr; }
   .country-header-info { flex-direction: column; align-items: flex-start; gap: var(--space-md); }
@@ -304,7 +321,7 @@ a:hover { color: var(--color-primary-hover); }
   <nav class="header-nav">
     <a href="#/" class="header-nav-link" id="nav-map">Map</a>
     <a href="#/market" class="header-nav-link" id="nav-market">整体市场</a>
-    <a href="#/config" class="header-nav-link" id="nav-config">配置</a>
+    <a href="#/config" class="header-nav-link" id="nav-config" style="display:none">配置</a>
   </nav>
   <div class="header-actions">
     <span class="header-breadcrumb" id="breadcrumb"></span>
@@ -568,6 +585,14 @@ function subscribeToChanges() {
   }
 }
 
+function isLoggedIn() { return !!currentUser && supabaseEnabled; }
+
+function updateReadonlyMode() {
+  const loggedIn = isLoggedIn();
+  document.body.classList.toggle('readonly', !loggedIn);
+  document.getElementById('nav-config').style.display = loggedIn ? '' : 'none';
+}
+
 function updateSyncDot(state) {
   const dot = document.getElementById('sync-dot');
   if (!dot) return;
@@ -698,7 +723,7 @@ function handleRoute() {
     if (!main) return;
     if (route.page === 'map') { setTimeout(() => renderMapPage(main), 50); }
     else if (route.page === 'market') { renderMarketPage(main); scrollToTop(); }
-    else if (route.page === 'config') { renderConfigPage(main); scrollToTop(); }
+    else if (route.page === 'config') { if (isLoggedIn()) { renderConfigPage(main); scrollToTop(); } else { navigate('/'); return; } }
     else { renderCountryPage(main, route.code); scrollToTop(); }
     // Update nav active state
     document.querySelectorAll('.header-nav-link').forEach(link => {
@@ -1896,7 +1921,7 @@ function renderModuleMetrics(code, country) {
           <span style="font-size:var(--text-sm);color:var(--color-muted)">总分:</span>
           <span style="font-size:var(--text-xl);font-weight:var(--weight-bold);color:var(--color-${level==='red'?'risk-red':level==='yellow'?'risk-yellow':'risk-green'})">${score}</span>
           <span class="badge badge-${level}">${getRiskLabel(level)}</span>
-          <button class="btn btn-ghost btn-sm" id="btn-chart-metrics-${code}" onclick="toggleMetricsChart('${code}')">↗ 月度趋势</button>
+          <button class="btn btn-ghost btn-sm chart-btn" id="btn-chart-metrics-${code}" onclick="toggleMetricsChart('${code}')">↗ 月度趋势</button>
         </div>
       </div>
       <div class="module-section-body">
@@ -2092,7 +2117,7 @@ function renderModuleWorkOrders(code, country) {
     <div class="module-section">
       <div class="module-section-header">
         <h3>↗ 工单数据</h3>
-        <button class="btn btn-ghost btn-sm" id="btn-chart-wo-${code}" onclick="toggleWOChart('${code}')">↗ 月度合格率趋势</button>
+        <button class="btn btn-ghost btn-sm chart-btn" id="btn-chart-wo-${code}" onclick="toggleWOChart('${code}')">↗ 月度合格率趋势</button>
       </div>
       <div class="module-section-body">
         <div class="stat-grid">${cards}</div>
@@ -2178,7 +2203,7 @@ function renderModuleTISLMS(code, country) {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-xl)">
           <div>
             <h4 style="margin-bottom:var(--space-md)">TIS 系统
-              <button class="btn btn-ghost btn-sm" id="btn-chart-tis-${code}" onclick="toggleTISChart('${code}')" style="margin-left:8px">↗ 趋势</button>
+              <button class="btn btn-ghost btn-sm chart-btn" id="btn-chart-tis-${code}" onclick="toggleTISChart('${code}')" style="margin-left:8px">↗ 趋势</button>
             </h4>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-bottom:var(--space-lg)">
               <div class="stat-card">
@@ -2194,7 +2219,7 @@ function renderModuleTISLMS(code, country) {
           </div>
           <div>
             <h4 style="margin-bottom:var(--space-md)">LMS 系统
-              <button class="btn btn-ghost btn-sm" id="btn-chart-lms-${code}" onclick="toggleLMSChart('${code}')" style="margin-left:8px">↗ 趋势</button>
+              <button class="btn btn-ghost btn-sm chart-btn" id="btn-chart-lms-${code}" onclick="toggleLMSChart('${code}')" style="margin-left:8px">↗ 趋势</button>
             </h4>
             <div style="margin-bottom:var(--space-lg)">
               <div class="stat-card">
@@ -2575,6 +2600,7 @@ function onLoginSuccess() {
   const overlay = document.getElementById('auth-overlay');
   if (overlay) overlay.remove();
   updateUserUI();
+  updateReadonlyMode();
   subscribeToChanges();
   handleRoute();
   showToast('已连接到云端', 'success');
@@ -2587,6 +2613,7 @@ function showLogout() {
   supabaseEnabled = false;
   updateSyncDot('offline');
   updateUserUI();
+  updateReadonlyMode();
   handleRoute();
   showToast('已切换到离线模式', 'success');
 }
@@ -2624,6 +2651,7 @@ async function init() {
     appData = await initData();
     console.log('Data ready. Countries:', Object.keys(appData.countries).length);
     updateUserUI();
+    updateReadonlyMode();
 
     if (currentUser && supabaseEnabled) {
       subscribeToChanges();
